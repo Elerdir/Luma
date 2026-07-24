@@ -32,7 +32,14 @@ public sealed class LibVlcMediaEngine : IMediaEngine
     {
         EnsureCoreInitialized();
         _libVlc = new LibVLC();
-        _player = new MediaPlayer(_libVlc);
+        _player = new MediaPlayer(_libVlc)
+        {
+            // The host application owns input: without this VLC's video window
+            // consumes mouse/keyboard events (and handles fullscreen itself),
+            // so clicks never reach the Avalonia UI.
+            EnableMouseInput = false,
+            EnableKeyInput = false
+        };
 
         _player.TimeChanged += OnTimeChanged;
         _player.EndReached += OnEndReached;

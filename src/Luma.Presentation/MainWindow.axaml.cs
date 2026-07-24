@@ -23,6 +23,35 @@ public partial class MainWindow : Window
             videoView.MediaPlayer = engine.Player;
     }
 
+    private DateTime _lastFullscreenToggle = DateTime.MinValue;
+
+    private void OnVideoAreaDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        // VideoView hosts the overlay in a separate floating window and forwards its
+        // pointer input onward, so one physical double-click surfaces twice. Without
+        // this guard the two deliveries toggle fullscreen on and straight back off.
+        var now = DateTime.UtcNow;
+        if (now - _lastFullscreenToggle < TimeSpan.FromMilliseconds(300))
+            return;
+        _lastFullscreenToggle = now;
+
+        ToggleFullscreen();
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// VideoView hosts its content in a separate floating window, so the data context
+    /// does not inherit down the visual tree — propagate it explicitly.
+    /// </summary>
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        var overlay = this.FindControl<Panel>("VideoOverlay");
+        if (overlay is not null)
+            overlay.DataContext = DataContext;
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         switch (e.Key)

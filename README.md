@@ -57,6 +57,17 @@ dotnet run --project src/Luma.Presentation -- "C:\videos\clip.mkv"
 | `F` / `F11` | Fullscreen toggle |
 | `Esc` | Exit fullscreen |
 | `Ctrl`+`O` | Open file |
+| Double-click video | Fullscreen toggle |
+
+## Icons
+
+`Assets/luma-icon.svg` is the design source. The raster assets used by the app
+(`luma.png` for the window/taskbar icon, `luma.ico` for the executable) are
+generated from a vector definition in code — no imaging dependency required:
+
+```bash
+dotnet run --project tools/Luma.IconGen
+```
 
 ## Status
 
