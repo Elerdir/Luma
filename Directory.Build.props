@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+  </PropertyGroup>
+
+  <!--
+    Scoped suppression: Tmds.DBus.Protocol (GHSA-xrw6-gwf8-vvr9) arrives only as a
+    transitive dependency of Avalonia's Linux backend. The fix is a major-version
+    jump Avalonia 11.3 does not depend on, and the code path is unused on Windows.
+    Revisit when Avalonia bumps the dependency. Suppressing this one advisory keeps
+    real future NU1903 warnings visible.
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-xrw6-gwf8-vvr9" />
+  </ItemGroup>
+</Project>

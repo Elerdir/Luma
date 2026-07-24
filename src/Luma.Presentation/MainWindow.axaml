@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
+        x:Class="Luma.Presentation.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Luma" Width="960" Height="600"
+        MinWidth="560" MinHeight="360"
+        Background="#0E0F13">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Space" Command="{Binding PlayPauseCommand}" />
+        <KeyBinding Gesture="K" Command="{Binding PlayPauseCommand}" />
+        <KeyBinding Gesture="Left" Command="{Binding SeekBackwardCommand}" />
+        <KeyBinding Gesture="Right" Command="{Binding SeekForwardCommand}" />
+        <KeyBinding Gesture="Shift+Left" Command="{Binding SeekBackwardLargeCommand}" />
+        <KeyBinding Gesture="Shift+Right" Command="{Binding SeekForwardLargeCommand}" />
+        <KeyBinding Gesture="Up" Command="{Binding VolumeUpCommand}" />
+        <KeyBinding Gesture="Down" Command="{Binding VolumeDownCommand}" />
+        <KeyBinding Gesture="M" Command="{Binding ToggleMuteCommand}" />
+        <KeyBinding Gesture="S" Command="{Binding StopCommand}" />
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+    </Window.KeyBindings>
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- Video surface + idle brand overlay -->
+        <Panel Grid.Row="0" Background="Black">
+            <vlc:VideoView Name="VideoView" />
+
+            <StackPanel IsVisible="{Binding !HasMedia}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="14" Orientation="Vertical">
+                <!-- Luma mark: aperture ring + luma-gradient play triangle -->
+                <Panel Width="92" Height="92" HorizontalAlignment="Center">
+                    <Ellipse Width="92" Height="92"
+                             Stroke="#2A2D37" StrokeThickness="6" />
+                    <Path HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Data="M 0,0 L 26,15 L 0,30 Z">
+                        <Path.Fill>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Offset="0" Color="#FF7A45" />
+                                <GradientStop Offset="1" Color="#3FA9F5" />
+                            </LinearGradientBrush>
+                        </Path.Fill>
+                    </Path>
+                </Panel>
+                <TextBlock Text="Luma" FontSize="30" FontWeight="Light"
+                           Foreground="#E8EAED" HorizontalAlignment="Center" />
+                <TextBlock Text="Open a video to begin"
+                           Foreground="#7A7F8A" FontSize="13" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Panel>
+
+        <!-- Transport bar -->
+        <Border Grid.Row="1" Name="TransportBar" Background="#15171D" Padding="14,10">
+            <StackPanel Spacing="8">
+
+                <!-- Seek row -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Column="0" Text="{Binding PositionText}"
+                               Foreground="#9AA0AB" VerticalAlignment="Center" Width="60" />
+                    <Slider Grid.Column="1" Minimum="0"
+                            Maximum="{Binding DurationSeconds}"
+                            Value="{Binding PositionSeconds, Mode=TwoWay}"
+                            IsEnabled="{Binding HasMedia}"
+                            VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                               Foreground="#9AA0AB" VerticalAlignment="Center"
+                               Width="60" TextAlignment="Right" />
+                </Grid>
+
+                <!-- Controls row -->
+                <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                    <Button Grid.Column="0" Content="Open"
+                            Command="{Binding OpenCommand}" Margin="0,0,8,0" />
+                    <Button Grid.Column="1" Content="{Binding PlayPauseGlyph}"
+                            Command="{Binding PlayPauseCommand}"
+                            IsEnabled="{Binding HasMedia}"
+                            Width="52" Margin="0,0,8,0" />
+                    <Button Grid.Column="2" Content="■"
+                            Command="{Binding StopCommand}"
+                            IsEnabled="{Binding HasMedia}" />
+
+                    <TextBlock Grid.Column="3" Text="{Binding MediaName}"
+                               Foreground="#C7CBD2" VerticalAlignment="Center"
+                               Margin="14,0" TextTrimming="CharacterEllipsis" />
+
+                    <TextBlock Grid.Column="4" Text="🔊" VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <Slider Grid.Column="5" Minimum="0" Maximum="100"
+                            Value="{Binding Volume, Mode=TwoWay}"
+                            Width="120" VerticalAlignment="Center" />
+                </Grid>
+
+                <TextBlock Text="{Binding StatusText}" Foreground="#6C7280" FontSize="12" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Luma.Application\Luma.Application.csproj" />
+    <ProjectReference Include="..\Luma.Domain\Luma.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibVLCSharp" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" />
+  </ItemGroup>
+</Project>

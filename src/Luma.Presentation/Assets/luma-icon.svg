@@ -1,0 +1,17 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="luma" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0" stop-color="#FF7A45"/>
+      <stop offset="1" stop-color="#3FA9F5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="#0E0F13"/>
+
+  <!-- Aperture ring (the "lens") -->
+  <circle cx="128" cy="128" r="74" fill="none" stroke="#2A2D37" stroke-width="14"/>
+
+  <!-- Luma-gradient play triangle (the Y signal) -->
+  <path d="M 110 92 L 176 128 L 110 164 Z" fill="url(#luma)"/>
+</svg>

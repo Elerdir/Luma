@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Luma.Application/Luma.Application.csproj" />
+    <Project Path="src/Luma.Domain/Luma.Domain.csproj" />
+    <Project Path="src/Luma.Infrastructure/Luma.Infrastructure.csproj" />
+    <Project Path="src/Luma.Presentation/Luma.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Luma.Application.Tests/Luma.Application.Tests.csproj" />
+    <Project Path="tests/Luma.Domain.Tests/Luma.Domain.Tests.csproj" />
+    <Project Path="tests/Luma.Infrastructure.Tests/Luma.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
