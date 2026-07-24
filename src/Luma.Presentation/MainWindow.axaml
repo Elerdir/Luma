@@ -89,11 +89,26 @@
                                Foreground="#C7CBD2" VerticalAlignment="Center"
                                Margin="14,0" TextTrimming="CharacterEllipsis" />
 
-                    <TextBlock Grid.Column="4" Text="🔊" VerticalAlignment="Center"
-                               Margin="0,0,6,0" />
-                    <Slider Grid.Column="5" Minimum="0" Maximum="100"
-                            Value="{Binding Volume, Mode=TwoWay}"
-                            Width="120" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                                VerticalAlignment="Center" Margin="0,0,12,0"
+                                IsVisible="{Binding HasMedia}">
+                        <ComboBox ItemsSource="{Binding AudioTracks}"
+                                  SelectedItem="{Binding SelectedAudioTrack, Mode=TwoWay}"
+                                  MinWidth="110" MaxWidth="160"
+                                  ToolTip.Tip="Audio track" />
+                        <ComboBox ItemsSource="{Binding SubtitleOptions}"
+                                  SelectedItem="{Binding SelectedSubtitle, Mode=TwoWay}"
+                                  MinWidth="110" MaxWidth="160"
+                                  ToolTip.Tip="Subtitles" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="🔊" VerticalAlignment="Center" />
+                        <Slider Minimum="0" Maximum="100"
+                                Value="{Binding Volume, Mode=TwoWay}"
+                                Width="120" VerticalAlignment="Center" />
+                    </StackPanel>
                 </Grid>
 
                 <TextBlock Text="{Binding StatusText}" Foreground="#6C7280" FontSize="12" />

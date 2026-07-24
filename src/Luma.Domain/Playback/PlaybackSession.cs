@@ -18,6 +18,18 @@ public sealed class PlaybackSession
     public PlaybackRate Rate { get; private set; } = PlaybackRate.Normal;
     public string? FaultMessage { get; private set; }
 
+    private readonly List<MediaTrack> _audioTracks = [];
+    private readonly List<MediaTrack> _subtitleTracks = [];
+
+    public IReadOnlyList<MediaTrack> AudioTracks => _audioTracks;
+    public IReadOnlyList<MediaTrack> SubtitleTracks => _subtitleTracks;
+
+    /// <summary>The active audio stream, if the media has any.</summary>
+    public MediaTrack? SelectedAudioTrack { get; private set; }
+
+    /// <summary>The active subtitle stream; <c>null</c> means subtitles are off.</summary>
+    public MediaTrack? SelectedSubtitleTrack { get; private set; }
+
     public bool HasMedia => Status is not PlaybackStatus.NoMedia;
     public bool IsPlaying => Status is PlaybackStatus.Playing;
 
@@ -30,6 +42,55 @@ public sealed class PlaybackSession
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         FaultMessage = null;
+        ClearTracks();
+    }
+
+    /// <summary>
+    /// Record the streams the backend found in the current media. Defaults the
+    /// selection to the first audio track with subtitles off.
+    /// </summary>
+    public void SetAvailableTracks(IEnumerable<MediaTrack> tracks)
+    {
+        ArgumentNullException.ThrowIfNull(tracks);
+        if (!HasMedia)
+            throw new InvalidPlaybackTransitionException(Status, nameof(SetAvailableTracks));
+
+        ClearTracks();
+        foreach (var track in tracks)
+        {
+            if (track.Kind is TrackKind.Audio) _audioTracks.Add(track);
+            else _subtitleTracks.Add(track);
+        }
+
+        SelectedAudioTrack = _audioTracks.Count > 0 ? _audioTracks[0] : null;
+        SelectedSubtitleTrack = null;
+    }
+
+    /// <summary>Choose the active audio stream. The track must be one of <see cref="AudioTracks"/>.</summary>
+    public void SelectAudioTrack(MediaTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        if (!_audioTracks.Contains(track))
+            throw new ArgumentException($"Audio track '{track.Name}' is not available for the current media.", nameof(track));
+
+        SelectedAudioTrack = track;
+    }
+
+    /// <summary>Choose the active subtitle stream, or <c>null</c> to turn subtitles off.</summary>
+    public void SelectSubtitleTrack(MediaTrack? track)
+    {
+        if (track is not null && !_subtitleTracks.Contains(track))
+            throw new ArgumentException($"Subtitle track '{track.Name}' is not available for the current media.", nameof(track));
+
+        SelectedSubtitleTrack = track;
+    }
+
+    private void ClearTracks()
+    {
+        _audioTracks.Clear();
+        _subtitleTracks.Clear();
+        SelectedAudioTrack = null;
+        SelectedSubtitleTrack = null;
     }
 
     /// <summary>The backend finished opening the source and reported its duration.</summary>
@@ -122,6 +183,7 @@ public sealed class PlaybackSession
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         FaultMessage = null;
+        ClearTracks();
     }
 
     /// <summary>Record an unrecoverable error for the current source. Legal from any state.</summary>

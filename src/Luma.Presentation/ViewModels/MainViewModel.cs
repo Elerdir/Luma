@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +26,14 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _positionText = "00:00";
     [ObservableProperty] private string _durationText = "00:00";
     [ObservableProperty] private int _volume = 80;
+    [ObservableProperty] private MediaTrack? _selectedAudioTrack;
+    [ObservableProperty] private MediaTrack? _selectedSubtitle;
+
+    /// <summary>Sentinel item representing "no subtitles" in the subtitle dropdown.</summary>
+    public static readonly MediaTrack SubtitlesOff = MediaTrack.Subtitle(-1, "Subtitles off");
+
+    public ObservableCollection<MediaTrack> AudioTracks { get; } = [];
+    public ObservableCollection<MediaTrack> SubtitleOptions { get; } = [];
 
     public MainViewModel(IPlayer player, IFilePicker filePicker)
     {
@@ -112,6 +121,18 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayPauseGlyph));
 
+    partial void OnSelectedAudioTrackChanged(MediaTrack? value)
+    {
+        if (_applyingSnapshot || value is null) return;
+        _player.SelectAudioTrack(value);
+    }
+
+    partial void OnSelectedSubtitleChanged(MediaTrack? value)
+    {
+        if (_applyingSnapshot) return;
+        _player.SelectSubtitleTrack(ReferenceEquals(value, SubtitlesOff) ? null : value);
+    }
+
     private void OnPlayerChanged(object? sender, PlayerSnapshot snapshot) =>
         Dispatcher.UIThread.Post(() => Apply(snapshot));
 
@@ -129,11 +150,39 @@ public sealed partial class MainViewModel : ObservableObject
             DurationText = Format(s.Duration);
             Volume = s.Volume.Level;
             StatusText = DescribeStatus(s);
+            SyncTracks(s);
         }
         finally
         {
             _applyingSnapshot = false;
         }
+    }
+
+    /// <summary>
+    /// Refresh the track dropdowns. The collections are rebuilt only when the media's
+    /// tracks actually changed — snapshots arrive on every position tick, and rebuilding
+    /// each time would make the dropdowns flicker and drop the user's selection.
+    /// </summary>
+    private void SyncTracks(PlayerSnapshot s)
+    {
+        if (!AudioTracks.SequenceEqual(s.AudioTracks))
+        {
+            AudioTracks.Clear();
+            foreach (var track in s.AudioTracks)
+                AudioTracks.Add(track);
+        }
+
+        var expectedSubtitles = new List<MediaTrack> { SubtitlesOff };
+        expectedSubtitles.AddRange(s.SubtitleTracks);
+        if (!SubtitleOptions.SequenceEqual(expectedSubtitles))
+        {
+            SubtitleOptions.Clear();
+            foreach (var option in expectedSubtitles)
+                SubtitleOptions.Add(option);
+        }
+
+        SelectedAudioTrack = s.SelectedAudioTrack;
+        SelectedSubtitle = s.SelectedSubtitleTrack ?? SubtitlesOff;
     }
 
     private static string DescribeStatus(PlayerSnapshot s) => s.Status switch

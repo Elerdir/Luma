@@ -21,6 +21,12 @@ public interface IMediaEngine : IAsyncDisposable
     void SetVolume(Volume volume);
     void SetRate(PlaybackRate rate);
 
+    /// <summary>Activate an audio stream reported via <see cref="Opened"/>.</summary>
+    void SelectAudioTrack(MediaTrack track);
+
+    /// <summary>Activate a subtitle stream, or pass <c>null</c> to turn subtitles off.</summary>
+    void SelectSubtitleTrack(MediaTrack? track);
+
     /// <summary>The source finished opening and its duration is known.</summary>
     event EventHandler<MediaOpenedEventArgs>? Opened;
 

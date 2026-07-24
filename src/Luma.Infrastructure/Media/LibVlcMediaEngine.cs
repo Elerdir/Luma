@@ -3,6 +3,12 @@ using Luma.Domain.Media;
 using Luma.Domain.Playback;
 using LibVLCSharp.Shared;
 
+// Both Luma.Domain.Media and LibVLCSharp.Shared define a MediaTrack; these aliases
+// keep the unqualified name bound to the domain type and name the VLC one explicitly.
+using MediaTrack = Luma.Domain.Media.MediaTrack;
+using VlcTrack = LibVLCSharp.Shared.MediaTrack;
+using VlcMedia = LibVLCSharp.Shared.Media;
+
 namespace Luma.Infrastructure.Media;
 
 /// <summary>
@@ -65,7 +71,7 @@ public sealed class LibVlcMediaEngine : IMediaEngine
             var duration = media.Duration > 0
                 ? TimeSpan.FromMilliseconds(media.Duration)
                 : TimeSpan.Zero;
-            Opened?.Invoke(this, new MediaOpenedEventArgs(duration));
+            Opened?.Invoke(this, new MediaOpenedEventArgs(duration, ReadTracks(media)));
         }
         catch (OperationCanceledException)
         {
@@ -110,8 +116,54 @@ public sealed class LibVlcMediaEngine : IMediaEngine
         _player.SetRate((float)rate.Multiplier);
     }
 
+    public void SelectAudioTrack(MediaTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        ThrowIfDisposed();
+        _player.SetAudioTrack(track.Id);
+    }
+
+    public void SelectSubtitleTrack(MediaTrack? track)
+    {
+        ThrowIfDisposed();
+        // -1 is LibVLC's "disable subtitles" sentinel.
+        _player.SetSpu(track?.Id ?? -1);
+    }
+
     /// <summary>The underlying player, needed by the Avalonia <c>VideoView</c> to render frames.</summary>
     public MediaPlayer Player => _player;
+
+    /// <summary>
+    /// Map LibVLC's stream descriptions onto domain tracks. LibVLC reports a synthetic
+    /// "Disable" entry (id -1) for subtitles, which the domain models as a null selection.
+    /// </summary>
+    private static IReadOnlyList<MediaTrack> ReadTracks(VlcMedia media)
+    {
+        var tracks = new List<MediaTrack>();
+
+        foreach (var t in media.Tracks)
+        {
+            switch (t.TrackType)
+            {
+                case TrackType.Audio:
+                    tracks.Add(MediaTrack.Audio(t.Id, DescribeTrack(t)));
+                    break;
+                case TrackType.Text when t.Id >= 0:
+                    tracks.Add(MediaTrack.Subtitle(t.Id, DescribeTrack(t)));
+                    break;
+            }
+        }
+
+        return tracks;
+    }
+
+    /// <summary>Best available human label; empty falls back to "Track {id}" in the domain type.</summary>
+    private static string DescribeTrack(VlcTrack track)
+    {
+        if (!string.IsNullOrWhiteSpace(track.Description))
+            return track.Description;
+        return string.IsNullOrWhiteSpace(track.Language) ? string.Empty : track.Language;
+    }
 
     private void OnTimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e) =>
         PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(e.Time));

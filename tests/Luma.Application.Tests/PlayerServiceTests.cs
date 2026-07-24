@@ -171,6 +171,76 @@ public class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Opening_publishes_tracks_and_applies_default_selection()
+    {
+        var (player, engine) = Create();
+        var cz = MediaTrack.Audio(0, "Czech");
+        var en = MediaTrack.Audio(1, "English");
+        var subs = MediaTrack.Subtitle(2, "Czech subs");
+
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len, [cz, en, subs]);
+
+        var snap = player.Snapshot;
+        snap.AudioTracks.ShouldBe([cz, en]);
+        snap.SubtitleTracks.ShouldBe([subs]);
+        snap.SelectedAudioTrack.ShouldBe(cz);
+        snap.SelectedSubtitleTrack.ShouldBeNull();
+
+        engine.LastAudioTrack.ShouldBe(cz);       // default pushed to backend
+        engine.LastSubtitleTrack.ShouldBeNull();  // subtitles explicitly off
+    }
+
+    [Fact]
+    public async Task Selecting_audio_track_forwards_to_engine()
+    {
+        var (player, engine) = Create();
+        var cz = MediaTrack.Audio(0, "Czech");
+        var en = MediaTrack.Audio(1, "English");
+
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len, [cz, en]);
+
+        player.SelectAudioTrack(en);
+
+        player.Snapshot.SelectedAudioTrack.ShouldBe(en);
+        engine.LastAudioTrack.ShouldBe(en);
+    }
+
+    [Fact]
+    public async Task Subtitles_can_be_enabled_then_turned_off()
+    {
+        var (player, engine) = Create();
+        var subs = MediaTrack.Subtitle(2, "Czech subs");
+
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len, [subs]);
+
+        player.SelectSubtitleTrack(subs);
+        player.Snapshot.SelectedSubtitleTrack.ShouldBe(subs);
+        engine.LastSubtitleTrack.ShouldBe(subs);
+
+        player.SelectSubtitleTrack(null);
+        player.Snapshot.SelectedSubtitleTrack.ShouldBeNull();
+        engine.LastSubtitleTrack.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Selecting_unavailable_track_is_rejected_before_reaching_engine()
+    {
+        var (player, engine) = Create();
+        var cz = MediaTrack.Audio(0, "Czech");
+
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len, [cz]);
+        var pushedBefore = engine.LastAudioTrack;
+
+        Should.Throw<ArgumentException>(() => player.SelectAudioTrack(MediaTrack.Audio(42, "Ghost")));
+
+        engine.LastAudioTrack.ShouldBe(pushedBefore); // engine untouched
+    }
+
+    [Fact]
     public async Task Dispose_unsubscribes_and_disposes_engine()
     {
         var (player, engine) = Create();

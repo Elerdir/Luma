@@ -1,3 +1,4 @@
+using Luma.Domain.Media;
 using Luma.Domain.Playback;
 
 namespace Luma.Application;
@@ -15,7 +16,11 @@ public sealed record PlayerSnapshot(
     PlaybackRate Rate,
     string? FaultMessage,
     int PlaylistCount,
-    int PlaylistIndex)
+    int PlaylistIndex,
+    IReadOnlyList<MediaTrack> AudioTracks,
+    IReadOnlyList<MediaTrack> SubtitleTracks,
+    MediaTrack? SelectedAudioTrack,
+    MediaTrack? SelectedSubtitleTrack)
 {
     public bool HasMedia => Status is not PlaybackStatus.NoMedia;
     public bool IsPlaying => Status is PlaybackStatus.Playing;

@@ -31,6 +31,12 @@ public interface IPlayer
     void SetRate(PlaybackRate rate);
     void SetRepeat(RepeatMode mode);
 
+    /// <summary>Switch the active audio stream.</summary>
+    void SelectAudioTrack(MediaTrack track);
+
+    /// <summary>Switch the active subtitle stream, or pass <c>null</c> to turn subtitles off.</summary>
+    void SelectSubtitleTrack(MediaTrack? track);
+
     Task NextAsync(CancellationToken cancellationToken = default);
     Task PreviousAsync(CancellationToken cancellationToken = default);
 }

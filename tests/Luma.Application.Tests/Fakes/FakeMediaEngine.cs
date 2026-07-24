@@ -32,12 +32,25 @@ public sealed class FakeMediaEngine : IMediaEngine
     public void SetVolume(Volume volume) => LastVolume = volume;
     public void SetRate(PlaybackRate rate) => LastRate = rate;
 
+    public MediaTrack? LastAudioTrack { get; private set; }
+    public MediaTrack? LastSubtitleTrack { get; private set; }
+    public int SubtitleSelectionCount { get; private set; }
+
+    public void SelectAudioTrack(MediaTrack track) => LastAudioTrack = track;
+
+    public void SelectSubtitleTrack(MediaTrack? track)
+    {
+        LastSubtitleTrack = track;
+        SubtitleSelectionCount++;
+    }
+
     public event EventHandler<MediaOpenedEventArgs>? Opened;
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler? EndReached;
     public event EventHandler<MediaFailedEventArgs>? Failed;
 
-    public void RaiseOpened(TimeSpan duration) => Opened?.Invoke(this, new MediaOpenedEventArgs(duration));
+    public void RaiseOpened(TimeSpan duration, IReadOnlyList<MediaTrack>? tracks = null) =>
+        Opened?.Invoke(this, new MediaOpenedEventArgs(duration, tracks ?? []));
     public void RaisePosition(TimeSpan position) => PositionChanged?.Invoke(this, position);
     public void RaiseEnd() => EndReached?.Invoke(this, EventArgs.Empty);
     public void RaiseFailed(string message) => Failed?.Invoke(this, new MediaFailedEventArgs(message));

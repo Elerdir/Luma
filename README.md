@@ -60,18 +60,17 @@ dotnet run --project src/Luma.Presentation -- "C:\videos\clip.mkv"
 
 ## Status
 
-Working vertical slice: open a file (or several as a playlist), play/pause/stop,
-seek, volume, and auto-advance on end — driven entirely through the domain state
-machine. Domain and application layers are covered by 66 unit tests; the LibVLC
-adapter has 3 integration smoke tests (`Category=Integration`).
+Working player: open a file (or several as a playlist), play/pause/stop, seek,
+volume, audio/subtitle track switching, and auto-advance on end — driven entirely
+through the domain state machine. Domain and application layers are covered by 80
+unit tests; the LibVLC adapter has 3 integration smoke tests (`Category=Integration`).
 
 Video renders embedded in the main window (verified: no separate VLC output
-window), and files can be opened from the command line. Keyboard shortcuts and
-fullscreen are wired.
+window), and files can be opened from the command line. Keyboard shortcuts,
+fullscreen, and audio/subtitle track selection are wired.
 
 ### Next up
 
-- Subtitle & audio-track selection (extend `IMediaEngine`)
 - Thumbnail seek preview
 - Playlist panel UI
 - Convert `Assets/luma-icon.svg` to a multi-size `.ico` for the window/taskbar

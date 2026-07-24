@@ -144,6 +144,31 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         lock (_gate) _playlist.Repeat = mode;
     }
 
+    public void SelectAudioTrack(MediaTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _session.SelectAudioTrack(track);
+            _engine.SelectAudioTrack(track);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
+    public void SelectSubtitleTrack(MediaTrack? track)
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _session.SelectSubtitleTrack(track);
+            _engine.SelectSubtitleTrack(track);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
     public async Task NextAsync(CancellationToken cancellationToken = default)
     {
         bool moved;
@@ -185,8 +210,15 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
             if (_session.Status is not PlaybackStatus.Loading)
                 return; // stale event
             _session.CompleteLoad(e.Duration, autoPlay: true);
+            _session.SetAvailableTracks(e.Tracks);
             _engine.SetVolume(_session.Volume);
             _engine.SetRate(_session.Rate);
+
+            // Push the session's default selection (first audio, subtitles off) to the engine.
+            if (_session.SelectedAudioTrack is { } audio)
+                _engine.SelectAudioTrack(audio);
+            _engine.SelectSubtitleTrack(_session.SelectedSubtitleTrack);
+
             _engine.Play();
             snapshot = BuildSnapshot();
         }
@@ -242,7 +274,11 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         _session.Rate,
         _session.FaultMessage,
         _playlist.Count,
-        _playlist.CurrentIndex);
+        _playlist.CurrentIndex,
+        [.. _session.AudioTracks],
+        [.. _session.SubtitleTracks],
+        _session.SelectedAudioTrack,
+        _session.SelectedSubtitleTrack);
 
     private void Publish(PlayerSnapshot snapshot) => Changed?.Invoke(this, snapshot);
 
