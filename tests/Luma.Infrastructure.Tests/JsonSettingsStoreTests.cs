@@ -23,7 +23,6 @@ public sealed class JsonSettingsStoreTests : IDisposable
         loaded.Volume.ShouldBe(80);
         loaded.IsMuted.ShouldBeFalse();
         loaded.Repeat.ShouldBe(RepeatMode.None);
-        loaded.RecentFiles.ShouldBeEmpty();
     }
 
     [Fact]
@@ -35,7 +34,6 @@ public sealed class JsonSettingsStoreTests : IDisposable
             Volume = 33,
             IsMuted = true,
             Repeat = RepeatMode.All,
-            RecentFiles = ["file:///c:/v/a.mp4"],
             ResumePoints = [new ResumePoint("file:///c:/v/a.mp4", TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(90))]
         };
 
@@ -45,7 +43,6 @@ public sealed class JsonSettingsStoreTests : IDisposable
         loaded.Volume.ShouldBe(33);
         loaded.IsMuted.ShouldBeTrue();
         loaded.Repeat.ShouldBe(RepeatMode.All);
-        loaded.RecentFiles.ShouldBe(saved.RecentFiles);
         loaded.ResumePoints.ShouldHaveSingleItem().Position.ShouldBe(TimeSpan.FromMinutes(4));
     }
 

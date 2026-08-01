@@ -46,7 +46,7 @@ public partial class App : Avalonia.Application
             var window = new MainWindow();
             var picker = new StorageFilePicker(window);
             var launcher = new ProcessInstallerLauncher(desktop);
-            var viewModel = new MainViewModel(player, picker, preferences, updates, launcher, language);
+            var viewModel = new MainViewModel(player, picker, updates, launcher, language);
             window.DataContext = viewModel;
 
             desktop.MainWindow = window;

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
             overlay.AddHandler(DragDrop.DropEvent, OnDrop);
             overlay.AddHandler(PointerMovedEvent, OnPointerMovedAnywhere, RoutingStrategies.Tunnel);
             overlay.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Bubble);
+            overlay.AddHandler(PointerReleasedEvent, OnVideoPointerReleased, RoutingStrategies.Bubble);
         }
     }
 
@@ -183,6 +185,37 @@ public partial class MainWindow : Window
 
         base.OnKeyDown(e);
     }
+
+    /// <summary>
+    /// Opens the video's context menu on a right-click.
+    ///
+    /// The flyout is declared on the overlay but opened by hand and anchored to
+    /// VideoArea in the main window. Left to itself a ContextFlyout inside VideoView's
+    /// floating window never opened at all — right-clicking the video produced no menu
+    /// and no popup window. Anchoring it to the main window sidesteps that.
+    /// </summary>
+    private void OnVideoPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton is not MouseButton.Right)
+            return;
+
+        var overlay = this.FindControl<Panel>("VideoOverlay");
+        var anchor = this.FindControl<Panel>("VideoArea");
+
+        // PopupFlyoutBase rather than FlyoutBase: only the former can be placed at the
+        // pointer, which is what a context menu has to do.
+        if (overlay?.ContextFlyout is PopupFlyoutBase flyout && anchor is not null)
+        {
+            flyout.ShowAt(anchor, showAtPointer: true);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Fullscreen is window state rather than player state, so it lives here rather
+    /// than on the view-model and the menu reaches it through a click handler.
+    /// </summary>
+    private void OnFullscreenMenuClick(object? sender, RoutedEventArgs e) => ToggleFullscreen();
 
     private void ToggleFullscreen() => SetFullscreen(!_isFullscreen);
 
