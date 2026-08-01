@@ -1,10 +1,17 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Luma.Presentation.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
+    <!--
+      Dark, not Default. Every surface in the app is a hardcoded dark colour, so
+      following the system variant meant a machine in light mode drew light Fluent
+      controls and a light window chrome over them: unreadable buttons and a title bar
+      that did not match the rest of the window. A video player is dark on purpose, so
+      the variant says so rather than leaving it to the OS.
+    -->
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="/Styles/Controls.axaml" />
     </Application.Styles>
 </Application>

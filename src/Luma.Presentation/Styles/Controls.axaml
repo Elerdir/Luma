@@ -1,0 +1,76 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+      Fluent's dark defaults are tuned for its own near-black surfaces. The transport
+      bar is #15171D, and against it the stock button and combo box backgrounds sit so
+      close to the bar that the controls read as flat text. These lift them just enough
+      to have an edge, and give the disabled state a foreground that is dimmed rather
+      than nearly invisible.
+
+      Only the controls that appear in the transport bar are touched; anything else
+      keeps Fluent's own styling.
+    -->
+
+    <Styles.Resources>
+        <SolidColorBrush x:Key="LumaControlBackground">#232833</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaControlBackgroundHover">#2E3543</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaControlBackgroundPressed">#1B2029</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaControlBackgroundDisabled">#1A1D25</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaControlBorder">#39414F</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaText">#E8EAED</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaTextDisabled">#6B7383</SolidColorBrush>
+        <SolidColorBrush x:Key="LumaAccent">#3FA9F5</SolidColorBrush>
+    </Styles.Resources>
+
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource LumaText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LumaControlBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="11,5" />
+    </Style>
+
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackgroundHover}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LumaAccent}" />
+        <Setter Property="Foreground" Value="{StaticResource LumaText}" />
+    </Style>
+
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackgroundPressed}" />
+        <Setter Property="Foreground" Value="{StaticResource LumaText}" />
+    </Style>
+
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackgroundDisabled}" />
+        <Setter Property="BorderBrush" Value="#262B35" />
+        <Setter Property="Foreground" Value="{StaticResource LumaTextDisabled}" />
+    </Style>
+
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource LumaText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LumaControlBorder}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <Style Selector="ComboBox:pointerover /template/ Border#Background">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackgroundHover}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LumaAccent}" />
+    </Style>
+
+    <Style Selector="ComboBox:disabled /template/ Border#Background">
+        <Setter Property="Background" Value="{StaticResource LumaControlBackgroundDisabled}" />
+    </Style>
+
+    <!-- The seek and volume sliders: a visible unfilled track, and a filled part that
+         reads as the accent rather than mid-grey. -->
+    <Style Selector="Slider /template/ Border#TrackBackground">
+        <Setter Property="Background" Value="#39414F" />
+    </Style>
+
+    <Style Selector="Slider:disabled /template/ Border#TrackBackground">
+        <Setter Property="Background" Value="#262B35" />
+    </Style>
+</Styles>
