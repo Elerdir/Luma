@@ -230,19 +230,26 @@ public partial class MainWindow : Window
         {
             _stateBeforeFullscreen = WindowState;
             WindowState = WindowState.FullScreen;
-            MoveTransportToOverlay();
             RevealControls();
         }
         else
         {
             _idleTimer.Stop();
-            MoveTransportToDock();
+            ShowControls();
             ShowCursor();
             WindowState = _stateBeforeFullscreen;
         }
     }
 
-    // ---- Fullscreen chrome: float the transport bar over the video and fade it out ----
+    // ---- Fullscreen chrome: hide the transport bar and cursor while idle ----
+    //
+    // An earlier attempt re-parented the bar into a host inside the video overlay so it
+    // would float over the picture. That silently did nothing — the bar stayed docked
+    // and never hid — because the overlay lives in VideoView's own top-level window and
+    // moving a control between two of those is not something to rely on.
+    //
+    // Collapsing the docked bar instead is what actually works: its grid row goes away,
+    // so the video takes the whole screen, which is the point of hiding it.
 
     private static readonly TimeSpan IdleBeforeHiding = TimeSpan.FromSeconds(3);
     private static readonly Cursor HiddenCursor = new(StandardCursorType.None);
@@ -250,37 +257,12 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _idleTimer = new() { Interval = IdleBeforeHiding };
 
-    /// <summary>
-    /// Re-parents the docked transport bar into the video overlay. Re-parenting rather
-    /// than keeping a second copy in XAML means the controls, bindings and shortcuts
-    /// have exactly one definition.
-    /// </summary>
-    private void MoveTransportToOverlay()
+    private void ShowControls() => SetControlsVisible(true);
+
+    private void SetControlsVisible(bool visible)
     {
-        var transport = this.FindControl<Border>("TransportBar");
-        var host = this.FindControl<Panel>("FullscreenTransportHost");
-        var root = this.FindControl<Grid>("RootGrid");
-        if (transport is null || host is null || root is null)
-            return;
-
-        root.Children.Remove(transport);
-        host.Children.Add(transport);
-        host.IsVisible = true;
-    }
-
-    private void MoveTransportToDock()
-    {
-        var transport = this.FindControl<Border>("TransportBar");
-        var host = this.FindControl<Panel>("FullscreenTransportHost");
-        var root = this.FindControl<Grid>("RootGrid");
-        if (transport is null || host is null || root is null)
-            return;
-
-        host.Children.Remove(transport);
-        host.IsVisible = false;
-        // Grid.Row/Column are attached to the Border itself, so they survive the move.
-        root.Children.Add(transport);
-        transport.IsVisible = true;
+        if (this.FindControl<Border>("TransportBar") is { } transport)
+            transport.IsVisible = visible;
     }
 
     /// <summary>
@@ -301,19 +283,37 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private object? _lastPointerSource;
+    private Point _lastPointerPosition;
+
     private void OnPointerMovedAnywhere(object? sender, PointerEventArgs e)
     {
-        if (_isFullscreen)
-            RevealControls();
+        if (!_isFullscreen)
+            return;
+
+        // Only a real change of position counts as activity.
+        //
+        // Hiding the bar gives its row back to the video, which reflows the layout
+        // underneath a completely stationary pointer — and Avalonia reports that as
+        // pointer movement. Treating it as activity re-showed the bar, which reflowed
+        // again, and the bar flickered for as long as the pointer stayed over the
+        // window. Move the mouse to another screen and it settled, which is what gave
+        // the loop away.
+        var position = e.GetPosition(sender as Visual);
+        if (ReferenceEquals(sender, _lastPointerSource) &&
+            Math.Abs(position.X - _lastPointerPosition.X) < 1 &&
+            Math.Abs(position.Y - _lastPointerPosition.Y) < 1)
+            return;
+
+        _lastPointerSource = sender;
+        _lastPointerPosition = position;
+        RevealControls();
     }
 
     /// <summary>Show the chrome and restart the idle countdown.</summary>
     private void RevealControls()
     {
-        var host = this.FindControl<Panel>("FullscreenTransportHost");
-        if (host is not null)
-            host.IsVisible = true;
-
+        ShowControls();
         ShowCursor();
 
         _idleTimer.Stop();
@@ -336,11 +336,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        var host = this.FindControl<Panel>("FullscreenTransportHost");
-        if (host is not null)
-            host.IsVisible = false;
-
+        SetControlsVisible(false);
         HideCursor();
+
     }
 
     // The overlay is its own top-level, so the cursor has to be set on both surfaces.
