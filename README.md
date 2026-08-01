@@ -51,9 +51,18 @@ other for every status.
 
 ## Platform support
 
-The UI is cross-platform, but the **native LibVLC libraries are only bundled for
-Windows** (`VideoLAN.LibVLC.Windows`). On Linux and macOS libvlc has to be installed
-system-wide before Luma will start:
+| Platform | Native libvlc |
+|---|---|
+| Windows x64 | Bundled (`VideoLAN.LibVLC.Windows`) — the MSI is self-contained |
+| macOS arm64 | Bundled into the `.app` by the release workflow, taken from the official VLC release |
+| Linux | **Not bundled** — install libvlc system-wide |
+
+There is deliberately no `VideoLAN.LibVLC.Mac` package reference: it ships a single
+**x64** `libvlc.dylib` and no plugin directory, so it can neither load on Apple silicon
+nor decode anything. The release workflow pulls libvlc and its plugins out of the
+official VLC arm64 disk image instead.
+
+Running from source on Linux or macOS needs libvlc installed:
 
 ```bash
 sudo apt install libvlc-dev vlc-plugin-base
@@ -62,6 +71,36 @@ sudo apt install libvlc-dev vlc-plugin-base
 ```bash
 brew install --cask vlc
 ```
+
+## Releases
+
+`.github/workflows/release.yml` builds both installers:
+
+| Platform | Output |
+|---|---|
+| Windows x64 | `Luma-<version>-x64.msi` |
+| macOS arm64 | `Luma-<version>-arm64.dmg` |
+
+Publishing a GitHub release builds both, attaches them to it, and uploads them to
+UpdateHub. Running the workflow by hand (**Actions → Release → Run workflow**) builds
+both and leaves them as workflow artifacts, so the packaging can be exercised without
+cutting a release.
+
+The UpdateHub upload is skipped unless these are configured, so the workflow is useful
+before the update server exists:
+
+| Secret | |
+|---|---|
+| `UPDATEHUB_URL` | e.g. `https://updates.example.com` |
+| `UPDATEHUB_CI_TOKEN` | CI or personal access token |
+
+Repo variable `APP_SLUG` overrides the default slug (`luma`). Uploads land as **drafts**
+— publish them in the UpdateHub admin UI.
+
+The macOS bundle is **ad-hoc signed**. Without any signature Gatekeeper refuses to run
+it at all; with it, users get the usual "unidentified developer" prompt they can
+override via right-click → Open. Proper notarisation needs a paid Apple Developer
+account and is not wired up.
 
 ## Build & run
 

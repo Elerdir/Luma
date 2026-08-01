@@ -23,7 +23,20 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="LibVLCSharp.Avalonia" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" />
+
+    <!--
+      Native libvlc, Windows only. Restricted by RuntimeIdentifier so a macOS publish
+      does not drag Windows DLLs along; with no RID (a plain build, or the tests) it
+      still applies, which is what the dev flow and CI already assumed.
+
+      There is deliberately no VideoLAN.LibVLC.Mac here: that package ships a single
+      x64 libvlc.dylib and no plugin directory, so it can neither load on Apple silicon
+      nor decode anything. The macOS bundle takes its libvlc from the official VLC
+      release instead — see .github/workflows/release.yml. Linux likewise expects
+      libvlc to be installed system-wide.
+    -->
+    <PackageReference Include="VideoLAN.LibVLC.Windows"
+                      Condition="'$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('win'))" />
     <PackageReference Include="Avalonia.Diagnostics">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
