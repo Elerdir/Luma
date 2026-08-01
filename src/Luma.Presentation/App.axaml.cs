@@ -34,19 +34,20 @@ public partial class App : Avalonia.Application
             var placementStore = provider.GetRequiredService<ISettingsStore<WindowPlacement>>();
             var updates = provider.GetRequiredService<IUpdateService>();
 
-            var language = new LanguageService(
+            var options = new InterfaceOptionsService(
                 provider.GetRequiredService<ISettingsStore<InterfaceOptions>>());
 
             // Before the window exists, so the first frame is already in the right
-            // language rather than flashing the system one and correcting itself.
+            // language rather than flashing the system one and correcting itself, and so
+            // the view-model can be built from settings that are already loaded.
             // Pushed onto the thread pool for the usual reason: this method runs on the
             // UI thread and must not block on a continuation that wants to resume here.
-            Task.Run(() => language.RestoreAsync()).GetAwaiter().GetResult();
+            Task.Run(() => options.RestoreAsync()).GetAwaiter().GetResult();
 
             var window = new MainWindow();
             var picker = new StorageFilePicker(window);
             var launcher = new ProcessInstallerLauncher(desktop);
-            var viewModel = new MainViewModel(player, picker, updates, launcher, language);
+            var viewModel = new MainViewModel(player, picker, updates, launcher, options);
             window.DataContext = viewModel;
 
             desktop.MainWindow = window;

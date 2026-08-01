@@ -13,4 +13,11 @@ public sealed record InterfaceOptions
     /// having to ask for it.
     /// </summary>
     public string Language { get; init; } = "";
+
+    /// <summary>
+    /// Whether opening a single file loads the rest of its folder. On by default: for a
+    /// series that is what people want, and for a one-off film the extra playlist
+    /// entries cost nothing. Off means a file opens alone.
+    /// </summary>
+    public bool LoadWholeFolder { get; init; } = true;
 }

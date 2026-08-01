@@ -101,6 +101,49 @@ public class PlayerServiceFolderTests
     }
 
     [Fact]
+    public async Task Turning_the_folder_off_makes_a_single_file_open_alone()
+    {
+        var engine = new FakeMediaEngine();
+        var scanner = new FakeMediaFolderScanner(Episode1, Episode2, Episode3);
+        var player = new PlayerService(engine, subtitleFinder: null, folderScanner: scanner)
+        {
+            LoadWholeFolder = false
+        };
+
+        await player.OpenAsync(Episode2);
+
+        player.Snapshot.PlaylistItems.ShouldHaveSingleItem().ShouldBe(Episode2);
+        player.Snapshot.CanGoNext.ShouldBeFalse();
+        scanner.Queries.ShouldBeEmpty(); // not even asked
+    }
+
+    [Fact]
+    public async Task Turning_the_folder_back_on_applies_to_the_next_open()
+    {
+        var engine = new FakeMediaEngine();
+        var player = PlayerWithFolder(engine);
+        player.LoadWholeFolder = false;
+        await player.OpenAsync(Episode2);
+
+        player.LoadWholeFolder = true;
+        await player.OpenAsync(Episode1);
+
+        player.Snapshot.PlaylistItems.ShouldBe([Episode1, Episode2, Episode3]);
+    }
+
+    [Fact]
+    public async Task The_folder_is_loaded_unless_someone_asks_otherwise()
+    {
+        var engine = new FakeMediaEngine();
+        var player = PlayerWithFolder(engine);
+
+        player.LoadWholeFolder.ShouldBeTrue();
+
+        await player.OpenAsync(Episode2);
+        player.Snapshot.PlaylistCount.ShouldBe(3);
+    }
+
+    [Fact]
     public async Task Without_a_scanner_a_single_file_stays_a_playlist_of_one()
     {
         var engine = new FakeMediaEngine();

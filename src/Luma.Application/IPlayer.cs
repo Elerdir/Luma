@@ -22,6 +22,17 @@ public interface IPlayer
     /// <summary>Replace the playlist with several sources and start the first.</summary>
     Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Whether opening a single file also loads the rest of its folder, so the next
+    /// episode is one press of Next away. On by default. Turning it off makes a single
+    /// file a playlist of one, and next/previous do nothing until more is added.
+    /// <para>
+    /// Never affects an explicit selection of several files: that is taken literally
+    /// either way.
+    /// </para>
+    /// </summary>
+    bool LoadWholeFolder { get; set; }
+
     void Play();
     void Pause();
     void TogglePlayPause();

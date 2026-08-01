@@ -20,7 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IFilePicker _filePicker;
     private readonly IUpdateService _updates;
     private readonly IInstallerLauncher _installerLauncher;
-    private readonly LanguageService _language;
+    private readonly InterfaceOptionsService _options;
 
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
@@ -81,6 +81,13 @@ public sealed partial class MainViewModel : ObservableObject
     private RepeatMode _repeat;
 
     [ObservableProperty] private bool _isPlaylistVisible;
+
+    /// <summary>
+    /// Whether opening one file also loads its folder. Takes effect on the next open —
+    /// turning it off does not empty a playlist that is already loaded, which would
+    /// throw away what someone is in the middle of watching.
+    /// </summary>
+    [ObservableProperty] private bool _loadWholeFolder = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlaySelectedCommand))]
@@ -153,7 +160,7 @@ public sealed partial class MainViewModel : ObservableObject
             if (value is null || value.Code == Localizer.Instance.CurrentLanguage)
                 return;
 
-            _ = _language.SetAsync(value.Code);
+            _ = _options.SetLanguageAsync(value.Code);
         }
     }
 
@@ -180,13 +187,19 @@ public sealed partial class MainViewModel : ObservableObject
         IFilePicker filePicker,
         IUpdateService updates,
         IInstallerLauncher installerLauncher,
-        LanguageService language)
+        InterfaceOptionsService options)
     {
         _player = player;
         _filePicker = filePicker;
         _updates = updates;
         _installerLauncher = installerLauncher;
-        _language = language;
+        _options = options;
+
+        // Straight to the field and to the player: going through the property would
+        // treat restoring the stored choice as the user making it, and write the file
+        // back on every launch.
+        _loadWholeFolder = options.Current.LoadWholeFolder;
+        _player.LoadWholeFolder = _loadWholeFolder;
 
         // Text this view-model composes itself is not reached by the XAML localization
         // bindings, so it has to be re-published when the language changes.
@@ -294,6 +307,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void TogglePlaylist() => IsPlaylistVisible = !IsPlaylistVisible;
+
+    [RelayCommand]
+    private void ToggleLoadWholeFolder() => LoadWholeFolder = !LoadWholeFolder;
+
+    partial void OnLoadWholeFolderChanged(bool value)
+    {
+        _player.LoadWholeFolder = value;
+        _ = _options.SetLoadWholeFolderAsync(value);
+    }
 
     // ---- Context-menu entries ----
     //
