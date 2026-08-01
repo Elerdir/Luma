@@ -185,7 +185,88 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
 
     public void SetRepeat(RepeatMode mode)
     {
-        lock (_gate) _playlist.Repeat = mode;
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _playlist.Repeat = mode;
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
+    public async Task EnqueueAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        if (sources.Count == 0)
+            return;
+
+        PlayerSnapshot snapshot;
+        bool startPlaying;
+        lock (_gate)
+        {
+            // Appending to an idle player should behave like opening; appending while
+            // something is playing must not interrupt it.
+            startPlaying = _playlist.IsEmpty;
+            _playlist.AddRange(sources);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+
+        if (startPlaying)
+            await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task PlayAtAsync(int index, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            if (index < 0 || index >= _playlist.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            _playlist.JumpTo(index);
+        }
+
+        await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RemoveAtAsync(int index, CancellationToken cancellationToken = default)
+    {
+        PlayerSnapshot snapshot;
+        bool wasCurrent;
+        bool listEmptied;
+        lock (_gate)
+        {
+            if (index < 0 || index >= _playlist.Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            wasCurrent = index == _playlist.CurrentIndex;
+            _playlist.RemoveAt(index);
+            listEmptied = _playlist.IsEmpty;
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+
+        if (!wasCurrent)
+            return;
+
+        // The entry that was playing is gone; RemoveAt has already moved the cursor
+        // onto its successor (or the new last entry).
+        if (listEmptied)
+            Stop();
+        else
+            await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public void ClearPlaylist()
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _playlist.Clear();
+            _session.Stop();
+            _engine.Stop();
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
     }
 
     public void SelectAudioTrack(MediaTrack track)
@@ -343,6 +424,8 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         _session.FaultMessage,
         _playlist.Count,
         _playlist.CurrentIndex,
+        [.. _playlist.Items],
+        _playlist.Repeat,
         [.. _session.AudioTracks],
         [.. _session.SubtitleTracks],
         _session.SelectedAudioTrack,

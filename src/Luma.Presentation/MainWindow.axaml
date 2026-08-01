@@ -24,9 +24,13 @@
         <KeyBinding Gesture="M" Command="{Binding ToggleMuteCommand}" />
         <KeyBinding Gesture="S" Command="{Binding StopCommand}" />
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+        <KeyBinding Gesture="N" Command="{Binding NextCommand}" />
+        <KeyBinding Gesture="P" Command="{Binding PreviousCommand}" />
+        <KeyBinding Gesture="R" Command="{Binding CycleRepeatCommand}" />
+        <KeyBinding Gesture="L" Command="{Binding TogglePlaylistCommand}" />
     </Window.KeyBindings>
 
-    <Grid RowDefinitions="*,Auto">
+    <Grid Name="RootGrid" RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
 
         <!--
           Video surface. The overlay lives *inside* VideoView: it hosts its content in a
@@ -34,7 +38,7 @@
           only layer that receives pointer input there — a sibling control would be covered
           by the native child window and never see a click. Double-click toggles fullscreen.
         -->
-        <Panel Grid.Row="0" Name="VideoArea" Background="Black"
+        <Panel Grid.Row="0" Grid.Column="0" Name="VideoArea" Background="Black"
                DoubleTapped="OnVideoAreaDoubleTapped">
             <vlc:VideoView Name="VideoView">
                 <Panel Name="VideoOverlay" Background="Transparent"
@@ -66,8 +70,47 @@
             </vlc:VideoView>
         </Panel>
 
+        <!-- Playlist panel -->
+        <Border Grid.Row="0" Grid.Column="1" Name="PlaylistPanel"
+                IsVisible="{Binding IsPlaylistVisible}"
+                Width="280" Background="#12141A"
+                BorderBrush="#22252E" BorderThickness="1,0,0,0">
+            <Grid RowDefinitions="Auto,*,Auto">
+
+                <TextBlock Grid.Row="0" Text="Playlist" Foreground="#C7CBD2"
+                           FontSize="13" Margin="12,10,12,8" />
+
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding Playlist}"
+                         SelectedItem="{Binding SelectedPlaylistItem, Mode=TwoWay}"
+                         Background="Transparent" BorderThickness="0"
+                         DoubleTapped="OnPlaylistDoubleTapped">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlaylistItemViewModel">
+                            <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Location}">
+                                <!-- Marks the entry the player is on right now -->
+                                <TextBlock Grid.Column="0" Text="▸" Width="14"
+                                           Foreground="#FF7A45"
+                                           IsVisible="{Binding IsCurrent}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6"
+                            Margin="12,8,12,10">
+                    <Button Content="Play" Command="{Binding PlaySelectedCommand}" />
+                    <Button Content="Remove" Command="{Binding RemoveSelectedCommand}" />
+                    <Button Content="Clear" Command="{Binding ClearPlaylistCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- Transport bar -->
-        <Border Grid.Row="1" Name="TransportBar" Background="#15171D" Padding="14,10">
+        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                Name="TransportBar" Background="#15171D" Padding="14,10">
             <StackPanel Spacing="8">
 
                 <!-- Seek row -->
@@ -85,33 +128,56 @@
                 </Grid>
 
                 <!-- Controls row -->
-                <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
-                    <Button Grid.Column="0" Content="Open"
-                            Command="{Binding OpenCommand}" Margin="0,0,8,0" />
-                    <Button Grid.Column="1" Content="{Binding PlayPauseGlyph}"
-                            Command="{Binding PlayPauseCommand}"
-                            Width="52" Margin="0,0,8,0" />
-                    <Button Grid.Column="2" Content="■"
-                            Command="{Binding StopCommand}" />
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6"
+                                VerticalAlignment="Center">
+                        <Button Content="Open" Command="{Binding OpenCommand}"
+                                ToolTip.Tip="Open files (Ctrl+O)" />
+                        <Button Content="⏮" Command="{Binding PreviousCommand}"
+                                ToolTip.Tip="Previous (P)" />
+                        <Button Content="{Binding PlayPauseGlyph}"
+                                Command="{Binding PlayPauseCommand}" Width="52" />
+                        <Button Content="⏭" Command="{Binding NextCommand}"
+                                ToolTip.Tip="Next (N)" />
+                        <Button Content="■" Command="{Binding StopCommand}"
+                                ToolTip.Tip="Stop (S)" />
+                    </StackPanel>
 
-                    <TextBlock Grid.Column="3" Text="{Binding MediaName}"
+                    <TextBlock Grid.Column="1" Text="{Binding MediaName}"
                                Foreground="#C7CBD2" VerticalAlignment="Center"
                                Margin="14,0" TextTrimming="CharacterEllipsis" />
 
-                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
-                                VerticalAlignment="Center" Margin="0,0,12,0"
-                                IsVisible="{Binding HasMedia}">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Button Content="{Binding RepeatLabel}"
+                                Command="{Binding CycleRepeatCommand}"
+                                ToolTip.Tip="Cycle repeat mode (R)" />
+                        <Button Content="☰" Command="{Binding TogglePlaylistCommand}"
+                                ToolTip.Tip="Toggle playlist (L)" />
+
+                        <ComboBox ItemsSource="{Binding RateOptions}"
+                                  SelectedItem="{Binding SelectedRate, Mode=TwoWay}"
+                                  MinWidth="76" ToolTip.Tip="Playback speed">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:Double">
+                                    <TextBlock Text="{Binding StringFormat='{}{0}x'}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
                         <ComboBox ItemsSource="{Binding AudioTracks}"
+                                  IsVisible="{Binding HasMedia}"
                                   SelectedItem="{Binding SelectedAudioTrack, Mode=TwoWay}"
                                   MinWidth="110" MaxWidth="160"
                                   ToolTip.Tip="Audio track" />
                         <ComboBox ItemsSource="{Binding SubtitleOptions}"
+                                  IsVisible="{Binding HasMedia}"
                                   SelectedItem="{Binding SelectedSubtitle, Mode=TwoWay}"
                                   MinWidth="110" MaxWidth="160"
                                   ToolTip.Tip="Subtitles" />
                     </StackPanel>
 
-                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6"
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"
                                 VerticalAlignment="Center">
                         <Button Content="{Binding VolumeGlyph}"
                                 Command="{Binding ToggleMuteCommand}"

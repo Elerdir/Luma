@@ -205,6 +205,148 @@ public class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Enqueue_appends_without_interrupting_playback()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len);
+
+        await player.EnqueueAsync([File("b"), File("c")]);
+
+        player.Snapshot.PlaylistCount.ShouldBe(3);
+        player.Snapshot.PlaylistIndex.ShouldBe(0);
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        engine.Opens.Count.ShouldBe(1); // nothing reopened
+    }
+
+    [Fact]
+    public async Task Enqueue_onto_an_idle_player_starts_playing()
+    {
+        var (player, engine) = Create();
+
+        await player.EnqueueAsync([File("a")]);
+
+        engine.Opens.Count.ShouldBe(1);
+        player.Snapshot.Status.ShouldBe(PlaybackStatus.Loading);
+    }
+
+    [Fact]
+    public async Task PlayAt_jumps_to_the_requested_entry()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b"), File("c")]);
+        engine.RaiseOpened(Len);
+
+        await player.PlayAtAsync(2);
+
+        player.Snapshot.PlaylistIndex.ShouldBe(2);
+        engine.Opens[^1].DisplayName.ShouldBe("c.mp4");
+    }
+
+    [Fact]
+    public async Task PlayAt_rejects_an_out_of_range_index()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a")]);
+        engine.RaiseOpened(Len);
+
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(() => player.PlayAtAsync(5));
+    }
+
+    [Fact]
+    public async Task Removing_a_later_entry_leaves_playback_alone()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        await player.RemoveAtAsync(1);
+
+        player.Snapshot.PlaylistCount.ShouldBe(1);
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        engine.Opens.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Removing_the_current_entry_advances_to_its_successor()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        await player.RemoveAtAsync(0);
+
+        player.Snapshot.PlaylistCount.ShouldBe(1);
+        engine.Opens[^1].DisplayName.ShouldBe("b.mp4");
+    }
+
+    [Fact]
+    public async Task Removing_the_last_remaining_entry_stops_playback()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a")]);
+        engine.RaiseOpened(Len);
+
+        await player.RemoveAtAsync(0);
+
+        player.Snapshot.PlaylistCount.ShouldBe(0);
+        player.Snapshot.Status.ShouldBe(PlaybackStatus.NoMedia);
+        engine.StopCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Clearing_the_playlist_stops_playback()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        player.ClearPlaylist();
+
+        player.Snapshot.PlaylistCount.ShouldBe(0);
+        player.Snapshot.Status.ShouldBe(PlaybackStatus.NoMedia);
+        engine.StopCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Snapshot_exposes_the_playlist_entries_and_repeat_mode()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        player.SetRepeat(RepeatMode.All);
+
+        player.Snapshot.PlaylistItems.Select(i => i.DisplayName).ShouldBe(["a.mp4", "b.mp4"]);
+        player.Snapshot.Repeat.ShouldBe(RepeatMode.All);
+    }
+
+    [Fact]
+    public async Task Next_is_unavailable_on_the_last_entry_unless_repeating()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+        await player.NextAsync();
+        engine.RaiseOpened(Len);
+
+        player.Snapshot.CanGoNext.ShouldBeFalse();
+        player.Snapshot.CanGoPrevious.ShouldBeTrue();
+
+        player.SetRepeat(RepeatMode.All);
+        player.Snapshot.CanGoNext.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_empty_playlist_offers_no_navigation()
+    {
+        var (player, _) = Create();
+
+        player.Snapshot.CanGoNext.ShouldBeFalse();
+        player.Snapshot.CanGoPrevious.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Stop_unloads_and_forwards_to_engine()
     {
         var (player, engine) = Create();
