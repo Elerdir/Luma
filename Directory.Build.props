@@ -2,6 +2,15 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+
+    <!--
+      Single source of the product version. The installer reads it, the app reports it
+      to the update server, and the release workflow tags with it.
+    -->
+    <Version>0.1.0</Version>
+    <Company>Elerdir</Company>
+    <Product>Luma</Product>
+
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- Ship as Luma.exe rather than Luma.Presentation.exe; the project name is an
+         internal layering detail and should not surface in Program Files. -->
+    <AssemblyName>Luma</AssemblyName>
+    <RootNamespace>Luma.Presentation</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <!-- Icons are generated from tools/Luma.IconGen; luma-icon.svg is the design source. -->
