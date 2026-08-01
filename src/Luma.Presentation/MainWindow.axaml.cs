@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -195,9 +196,36 @@ public partial class MainWindow : Window
                 SetFullscreen(false);
                 e.Handled = true;
                 break;
+
+            // Page down/up step through the folder the file came from — the next and
+            // previous episode. The same thing the ⏭ and ⏮ buttons do, on the keys a
+            // person's hand is already near while watching.
+            case Key.PageDown:
+                e.Handled = Invoke(vm => vm.NextCommand);
+                break;
+            case Key.PageUp:
+                e.Handled = Invoke(vm => vm.PreviousCommand);
+                break;
         }
 
         base.OnKeyDown(e);
+    }
+
+    /// <summary>
+    /// Run a view-model command if it is currently allowed, reporting whether it ran.
+    /// A key that could not do anything is left unhandled rather than silently eaten.
+    /// </summary>
+    private bool Invoke(Func<MainViewModel, ICommand> pick)
+    {
+        if (DataContext is not MainViewModel vm)
+            return false;
+
+        var command = pick(vm);
+        if (!command.CanExecute(null))
+            return false;
+
+        command.Execute(null);
+        return true;
     }
 
     /// <summary>

@@ -16,6 +16,7 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
 {
     private readonly IMediaEngine _engine;
     private readonly ISubtitleFinder? _subtitleFinder;
+    private readonly IMediaFolderScanner? _folderScanner;
     private readonly PlaybackSession _session = new();
     private readonly Playlist _playlist = new();
     private readonly Lock _gate = new();
@@ -26,10 +27,18 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
     /// Optional. When supplied, sidecar subtitle files are attached automatically as
     /// each source opens. Omitting it simply means no automatic discovery.
     /// </param>
-    public PlayerService(IMediaEngine engine, ISubtitleFinder? subtitleFinder = null)
+    /// <param name="folderScanner">
+    /// Optional. When supplied, opening a single file also picks up the rest of its
+    /// folder as the playlist. Omitting it means a single file stays a playlist of one.
+    /// </param>
+    public PlayerService(
+        IMediaEngine engine,
+        ISubtitleFinder? subtitleFinder = null,
+        IMediaFolderScanner? folderScanner = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _subtitleFinder = subtitleFinder;
+        _folderScanner = folderScanner;
         _engine.Opened += OnEngineOpened;
         _engine.PositionChanged += OnEnginePositionChanged;
         _engine.EndReached += OnEngineEndReached;
@@ -56,13 +65,67 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         if (sources.Count == 0)
             throw new ArgumentException("At least one source is required.", nameof(sources));
 
+        var (entries, startAt) = ExpandToFolder(sources);
+
         lock (_gate)
         {
             _playlist.Clear();
-            _playlist.AddRange(sources);
+            _playlist.AddRange(entries);
+            _playlist.JumpTo(startAt);
         }
 
         await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Opening a single file loads its whole folder, with the cursor on the file that
+    /// was actually asked for. Open episode 5 of a series and 6 is one press of Next
+    /// away — which is the point, since nobody wants to reach for the file dialog
+    /// between episodes.
+    /// <para>
+    /// Only for a single file: picking several files, or dragging a handful in, is an
+    /// explicit choice of what to play and is taken literally.
+    /// </para>
+    /// </summary>
+    private (IReadOnlyList<MediaSource> Entries, int StartAt) ExpandToFolder(
+        IReadOnlyList<MediaSource> sources)
+    {
+        if (_folderScanner is null || sources.Count != 1)
+            return (sources, 0);
+
+        var opened = sources[0];
+        var siblings = _folderScanner.FindSiblingsOf(opened);
+
+        // If the file we opened is not in what came back — an unreadable folder, an
+        // extension the scanner does not list — the folder is no use and the single
+        // file stands on its own.
+        var index = IndexOf(siblings, opened);
+        return index < 0 ? (sources, 0) : (siblings, index);
+    }
+
+    private static int IndexOf(IReadOnlyList<MediaSource> sources, MediaSource wanted)
+    {
+        for (var i = 0; i < sources.Count; i++)
+            if (Same(sources[i], wanted))
+                return i;
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Path equality, allowing for the file dialog and the directory listing disagreeing
+    /// about case on the file systems where case does not distinguish two files.
+    /// </summary>
+    private static bool Same(MediaSource a, MediaSource b)
+    {
+        if (a == b)
+            return true;
+
+        if (!a.IsLocalFile || !b.IsLocalFile || OperatingSystem.IsLinux())
+            return false;
+
+        return string.Equals(
+            a.Location.LocalPath, b.Location.LocalPath, StringComparison.OrdinalIgnoreCase);
     }
 
     public void Play()

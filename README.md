@@ -38,8 +38,10 @@ other for every status.
 - Sidecar subtitles found automatically (`movie.srt`, `movie.en.srt`, `Subs/…`)
 - Fullscreen with auto-hiding controls and cursor
 - Drag and drop files onto the window (hold <kbd>Shift</kbd> to append)
-- Remembers volume, mute, repeat, window size and recent files — and resumes each file
-  where you left it
+- Opening one file loads its folder, in episode order — <kbd>Page Down</kbd> is the next
+  episode
+- Remembers volume, mute, repeat and window size — and resumes each file where you left
+  it
 
 ## Tech stack
 
@@ -162,6 +164,7 @@ WiX 5 is MS-RL and needs no agreement.
 | `M` | Mute toggle |
 | `S` | Stop |
 | `N` / `P` | Next / previous playlist item |
+| `PgDn` / `PgUp` | Next / previous file in the folder |
 | `R` | Cycle repeat mode |
 | `L` | Toggle playlist panel |
 | `F` / `F11` | Fullscreen toggle |
