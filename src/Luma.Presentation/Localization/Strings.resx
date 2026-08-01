@@ -52,7 +52,6 @@
   <data name="Status.Error" xml:space="preserve"><value>Error: {0}</value><comment>{0} is the error message</comment></data>
 
   <data name="Button.Open" xml:space="preserve"><value>Open</value></data>
-  <data name="Button.Recent" xml:space="preserve"><value>Recent</value></data>
   <data name="Button.Play" xml:space="preserve"><value>Play</value></data>
   <data name="Button.Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Button.Clear" xml:space="preserve"><value>Clear</value></data>
@@ -67,7 +66,6 @@
   <data name="Subtitles.Off" xml:space="preserve"><value>Subtitles off</value></data>
 
   <data name="Tooltip.Open" xml:space="preserve"><value>Open files (Ctrl+O)</value></data>
-  <data name="Tooltip.Recent" xml:space="preserve"><value>Recently played</value></data>
   <data name="Tooltip.Previous" xml:space="preserve"><value>Previous (P)</value></data>
   <data name="Tooltip.Next" xml:space="preserve"><value>Next (N)</value></data>
   <data name="Tooltip.Stop" xml:space="preserve"><value>Stop (S)</value></data>
@@ -92,4 +90,22 @@
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Subtitle files</value></data>
 
   <data name="Language.System" xml:space="preserve"><value>System</value><comment>Follow the operating system language</comment></data>
+
+  <!-- Right-click menu on the video -->
+  <data name="Menu.Open" xml:space="preserve"><value>Open…</value></data>
+  <data name="Menu.PlayPause" xml:space="preserve"><value>Play / pause</value></data>
+  <data name="Menu.Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="Menu.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Menu.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Menu.AudioTrack" xml:space="preserve"><value>Audio track</value></data>
+  <data name="Menu.Subtitles" xml:space="preserve"><value>Subtitles</value></data>
+  <data name="Menu.LoadSubtitle" xml:space="preserve"><value>Load subtitle file…</value></data>
+  <data name="Menu.Speed" xml:space="preserve"><value>Speed</value></data>
+  <data name="Menu.Repeat" xml:space="preserve"><value>Repeat</value></data>
+  <data name="Menu.RepeatOff" xml:space="preserve"><value>Off</value></data>
+  <data name="Menu.RepeatOne" xml:space="preserve"><value>One</value></data>
+  <data name="Menu.RepeatAll" xml:space="preserve"><value>All</value></data>
+  <data name="Menu.Playlist" xml:space="preserve"><value>Show playlist</value></data>
+  <data name="Menu.Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Menu.Fullscreen" xml:space="preserve"><value>Fullscreen</value></data>
 </root>

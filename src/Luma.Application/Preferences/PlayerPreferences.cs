@@ -8,16 +8,11 @@ namespace Luma.Application.Preferences;
 /// </summary>
 public sealed record PlayerPreferences
 {
-    public const int MaxRecentFiles = 12;
-
     public int Volume { get; init; } = 80;
 
     public bool IsMuted { get; init; }
 
     public RepeatMode Repeat { get; init; } = RepeatMode.None;
-
-    /// <summary>Most recently opened first.</summary>
-    public IReadOnlyList<string> RecentFiles { get; init; } = [];
 
     /// <summary>Where playback had got to in files that were not watched to the end.</summary>
     public IReadOnlyList<ResumePoint> ResumePoints { get; init; } = [];

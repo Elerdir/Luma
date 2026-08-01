@@ -18,7 +18,6 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IPlayer _player;
     private readonly IFilePicker _filePicker;
-    private readonly PreferenceTracker _preferences;
     private readonly IUpdateService _updates;
     private readonly IInstallerLauncher _installerLauncher;
     private readonly LanguageService _language;
@@ -105,10 +104,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<MediaTrack> SubtitleOptions { get; } = [];
     public ObservableCollection<PlaylistItemViewModel> Playlist { get; } = [];
 
-    /// <summary>Previously opened files, most recent first.</summary>
-    public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
 
-    public bool HasRecentFiles => RecentFiles.Count > 0;
 
     // ---- Updates ----
 
@@ -182,14 +178,12 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         IPlayer player,
         IFilePicker filePicker,
-        PreferenceTracker preferences,
         IUpdateService updates,
         IInstallerLauncher installerLauncher,
         LanguageService language)
     {
         _player = player;
         _filePicker = filePicker;
-        _preferences = preferences;
         _updates = updates;
         _installerLauncher = installerLauncher;
         _language = language;
@@ -198,9 +192,7 @@ public sealed partial class MainViewModel : ObservableObject
         // bindings, so it has to be re-published when the language changes.
         Localizer.Instance.PropertyChanged += (_, _) => RefreshLocalizedText();
         _player.Changed += OnPlayerChanged;
-        _preferences.RecentFilesChanged += OnRecentFilesChanged;
         Apply(_player.Snapshot);
-        SyncRecentFiles();
     }
 
     public string PlayPauseGlyph => IsPlaying ? "❚❚" : "▶";
@@ -303,6 +295,39 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void TogglePlaylist() => IsPlaylistVisible = !IsPlaylistVisible;
 
+    // ---- Context-menu entries ----
+    //
+    // The menu picks a value directly rather than cycling or stepping, so each of these
+    // takes the value as a parameter. They set the same properties the transport bar
+    // used to, so the selection stays in one place.
+
+    [RelayCommand]
+    private void SetRepeat(RepeatMode mode) => _player.SetRepeat(mode);
+
+    [RelayCommand]
+    private void SelectRate(double rate) => SelectedRate = rate;
+
+    [RelayCommand]
+    private void SelectAudio(MediaTrack? track)
+    {
+        if (track is not null)
+            SelectedAudioTrack = track;
+    }
+
+    [RelayCommand]
+    private void SelectSubtitle(MediaTrack? track)
+    {
+        if (track is not null)
+            SelectedSubtitle = track;
+    }
+
+    [RelayCommand]
+    private void SelectLanguage(LanguageOption? option)
+    {
+        if (option is not null)
+            SelectedLanguage = option;
+    }
+
     [RelayCommand(CanExecute = nameof(HasPlaylistSelection))]
     private Task PlaySelectedAsync()
     {
@@ -392,11 +417,6 @@ public sealed partial class MainViewModel : ObservableObject
         UpdateStatus = "";
     }
 
-    /// <summary>Reopen an entry from the recent-files menu.</summary>
-    [RelayCommand]
-    private Task OpenRecentAsync(RecentFileViewModel? recent) =>
-        recent is null ? Task.CompletedTask : OpenPathsAsync([recent.FullPath]);
-
     private bool HasPlaylistSelection => SelectedPlaylistItem is not null;
 
     private int IndexOfSelected() =>
@@ -447,18 +467,6 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnPlayerChanged(object? sender, PlayerSnapshot snapshot) =>
         Dispatcher.UIThread.Post(() => Apply(snapshot));
-
-    private void OnRecentFilesChanged(object? sender, EventArgs e) =>
-        Dispatcher.UIThread.Post(SyncRecentFiles);
-
-    private void SyncRecentFiles()
-    {
-        RecentFiles.Clear();
-        foreach (var location in _preferences.RecentFiles)
-            RecentFiles.Add(new RecentFileViewModel(location));
-
-        OnPropertyChanged(nameof(HasRecentFiles));
-    }
 
     private void Apply(PlayerSnapshot s)
     {

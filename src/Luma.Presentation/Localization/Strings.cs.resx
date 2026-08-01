@@ -46,7 +46,6 @@
   <data name="Status.Error" xml:space="preserve"><value>Chyba: {0}</value></data>
 
   <data name="Button.Open" xml:space="preserve"><value>Otevřít</value></data>
-  <data name="Button.Recent" xml:space="preserve"><value>Nedávné</value></data>
   <data name="Button.Play" xml:space="preserve"><value>Přehrát</value></data>
   <data name="Button.Remove" xml:space="preserve"><value>Odebrat</value></data>
   <data name="Button.Clear" xml:space="preserve"><value>Vyprázdnit</value></data>
@@ -61,7 +60,6 @@
   <data name="Subtitles.Off" xml:space="preserve"><value>Titulky vypnuty</value></data>
 
   <data name="Tooltip.Open" xml:space="preserve"><value>Otevřít soubory (Ctrl+O)</value></data>
-  <data name="Tooltip.Recent" xml:space="preserve"><value>Naposledy přehrané</value></data>
   <data name="Tooltip.Previous" xml:space="preserve"><value>Předchozí (P)</value></data>
   <data name="Tooltip.Next" xml:space="preserve"><value>Další (N)</value></data>
   <data name="Tooltip.Stop" xml:space="preserve"><value>Zastavit (S)</value></data>
@@ -86,4 +84,22 @@
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Soubory titulků</value></data>
 
   <data name="Language.System" xml:space="preserve"><value>Podle systému</value></data>
+
+  <!-- Nabídka po kliknutí pravým tlačítkem na video -->
+  <data name="Menu.Open" xml:space="preserve"><value>Otevřít…</value></data>
+  <data name="Menu.PlayPause" xml:space="preserve"><value>Přehrát / pozastavit</value></data>
+  <data name="Menu.Stop" xml:space="preserve"><value>Zastavit</value></data>
+  <data name="Menu.Previous" xml:space="preserve"><value>Předchozí</value></data>
+  <data name="Menu.Next" xml:space="preserve"><value>Další</value></data>
+  <data name="Menu.AudioTrack" xml:space="preserve"><value>Zvuková stopa</value></data>
+  <data name="Menu.Subtitles" xml:space="preserve"><value>Titulky</value></data>
+  <data name="Menu.LoadSubtitle" xml:space="preserve"><value>Načíst soubor titulků…</value></data>
+  <data name="Menu.Speed" xml:space="preserve"><value>Rychlost</value></data>
+  <data name="Menu.Repeat" xml:space="preserve"><value>Opakování</value></data>
+  <data name="Menu.RepeatOff" xml:space="preserve"><value>Vypnuto</value></data>
+  <data name="Menu.RepeatOne" xml:space="preserve"><value>Jedno</value></data>
+  <data name="Menu.RepeatAll" xml:space="preserve"><value>Vše</value></data>
+  <data name="Menu.Playlist" xml:space="preserve"><value>Zobrazit seznam stop</value></data>
+  <data name="Menu.Language" xml:space="preserve"><value>Jazyk</value></data>
+  <data name="Menu.Fullscreen" xml:space="preserve"><value>Celá obrazovka</value></data>
 </root>

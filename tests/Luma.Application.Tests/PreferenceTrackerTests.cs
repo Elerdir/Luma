@@ -85,8 +85,12 @@ public class PreferenceTrackerTests
         store.Current.Repeat.ShouldBe(RepeatMode.One);
     }
 
+    /// <summary>
+    /// No history of what was played is kept. The only file locations that reach the
+    /// settings file are resume points, and only while a file is part-watched.
+    /// </summary>
     [Fact]
-    public async Task Opened_files_are_recorded_as_recent_most_recent_first()
+    public async Task Watching_files_leaves_no_list_of_them_behind()
     {
         var (player, engine, tracker, store) = Create();
         await tracker.RestoreAsync();
@@ -98,28 +102,9 @@ public class PreferenceTrackerTests
 
         await tracker.FlushAsync();
 
-        store.Current.RecentFiles.Count.ShouldBe(2);
-        store.Current.RecentFiles[0].ShouldEndWith("b.mp4");
-        store.Current.RecentFiles[1].ShouldEndWith("a.mp4");
-    }
-
-    [Fact]
-    public async Task Reopening_a_file_moves_it_to_the_front_without_duplicating()
-    {
-        var (player, engine, tracker, store) = Create();
-        await tracker.RestoreAsync();
-
-        await player.OpenAsync(File("a"));
-        engine.RaiseOpened(Len);
-        await player.OpenAsync(File("b"));
-        engine.RaiseOpened(Len);
-        await player.OpenAsync(File("a"));
-        engine.RaiseOpened(Len);
-
-        await tracker.FlushAsync();
-
-        store.Current.RecentFiles.Count.ShouldBe(2);
-        store.Current.RecentFiles[0].ShouldEndWith("a.mp4");
+        // Neither file was watched far enough in to earn a resume point, so nothing
+        // identifying them should have been written at all.
+        store.Current.ResumePoints.ShouldBeEmpty();
     }
 
     [Fact]

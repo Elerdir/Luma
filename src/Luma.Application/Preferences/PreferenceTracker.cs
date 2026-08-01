@@ -20,7 +20,6 @@ public sealed class PreferenceTracker : IAsyncDisposable
 
     private PlayerPreferences _preferences = new();
     private readonly Dictionary<string, ResumePoint> _resumePoints = [];
-    private readonly List<string> _recentFiles = [];
 
     /// <summary>The source the last snapshot was about, used to spot media changes.</summary>
     private MediaSource? _currentSource;
@@ -39,14 +38,7 @@ public sealed class PreferenceTracker : IAsyncDisposable
         _store = store ?? throw new ArgumentNullException(nameof(store));
     }
 
-    /// <summary>Files opened previously, most recent first.</summary>
-    public IReadOnlyList<string> RecentFiles
-    {
-        get { lock (_gate) return [.. _recentFiles]; }
-    }
 
-    /// <summary>Raised when <see cref="RecentFiles"/> changes.</summary>
-    public event EventHandler? RecentFilesChanged;
 
     /// <summary>
     /// Load the stored preferences and push them onto the player, then start tracking.
@@ -63,8 +55,6 @@ public sealed class PreferenceTracker : IAsyncDisposable
         lock (_gate)
         {
             _preferences = loaded;
-            _recentFiles.Clear();
-            _recentFiles.AddRange(loaded.RecentFiles);
             _resumePoints.Clear();
             foreach (var point in loaded.ResumePoints)
                 _resumePoints[point.Location] = point;
@@ -77,14 +67,12 @@ public sealed class PreferenceTracker : IAsyncDisposable
         // Subscribed only after the restore, so applying the stored values does not
         // immediately read back as "the user changed something".
         _player.Changed += OnPlayerChanged;
-        RecentFilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnPlayerChanged(object? sender, PlayerSnapshot snapshot)
     {
         MediaSource? resumeFor = null;
         var resumeTo = TimeSpan.Zero;
-        var recentChanged = false;
 
         lock (_gate)
         {
@@ -92,13 +80,10 @@ public sealed class PreferenceTracker : IAsyncDisposable
 
             if (sourceChanged)
             {
-                recentChanged = snapshot.Source is not null;
                 // Bank the outgoing file's position before losing sight of it.
                 RecordResumePoint(_currentSource, _currentPosition, _currentDuration);
                 _currentSource = snapshot.Source;
 
-                if (snapshot.Source is not null)
-                    NoteRecentFile(snapshot.Source);
             }
 
             _currentPosition = snapshot.Position;
@@ -126,8 +111,6 @@ public sealed class PreferenceTracker : IAsyncDisposable
             }
         }
 
-        if (recentChanged)
-            RecentFilesChanged?.Invoke(this, EventArgs.Empty);
 
         if (resumeFor is not null)
         {
@@ -163,17 +146,6 @@ public sealed class PreferenceTracker : IAsyncDisposable
             _resumePoints.Remove(key);
     }
 
-    private void NoteRecentFile(MediaSource source)
-    {
-        var key = Key(source);
-        _recentFiles.RemoveAll(f => string.Equals(f, key, StringComparison.OrdinalIgnoreCase));
-        _recentFiles.Insert(0, key);
-
-        if (_recentFiles.Count > PlayerPreferences.MaxRecentFiles)
-            _recentFiles.RemoveRange(
-                PlayerPreferences.MaxRecentFiles,
-                _recentFiles.Count - PlayerPreferences.MaxRecentFiles);
-    }
 
     /// <summary>Write the current state out. Called on shutdown.</summary>
     public async Task FlushAsync(CancellationToken cancellationToken = default)
@@ -184,7 +156,6 @@ public sealed class PreferenceTracker : IAsyncDisposable
             RecordResumePoint(_currentSource, _currentPosition, _currentDuration);
             toSave = _preferences with
             {
-                RecentFiles = [.. _recentFiles],
                 ResumePoints = [.. _resumePoints.Values]
             };
         }
