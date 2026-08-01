@@ -1,5 +1,6 @@
 using Luma.Domain.Media;
 using Luma.Domain.Playback;
+using Luma.Domain.Playlists;
 
 namespace Luma.Application;
 
@@ -18,6 +19,8 @@ public sealed record PlayerSnapshot(
     string? FaultMessage,
     int PlaylistCount,
     int PlaylistIndex,
+    IReadOnlyList<MediaSource> PlaylistItems,
+    RepeatMode Repeat,
     IReadOnlyList<MediaTrack> AudioTracks,
     IReadOnlyList<MediaTrack> SubtitleTracks,
     MediaTrack? SelectedAudioTrack,
@@ -33,6 +36,14 @@ public sealed record PlayerSnapshot(
     public bool CanTogglePlayPause => Status.CanTogglePlayPause();
     public bool CanSeek => Status.CanSeek();
     public bool CanStop => Status.CanStop();
+
+    /// <summary>There is a further item to advance to (repeat modes always qualify).</summary>
+    public bool CanGoNext =>
+        PlaylistCount > 0 && (Repeat is not RepeatMode.None || PlaylistIndex < PlaylistCount - 1);
+
+    /// <summary>There is an earlier item to go back to.</summary>
+    public bool CanGoPrevious =>
+        PlaylistCount > 0 && (Repeat is not RepeatMode.None || PlaylistIndex > 0);
 
     /// <summary>Progress in the range [0, 1]; 0 when the duration is unknown.</summary>
     public double Progress =>

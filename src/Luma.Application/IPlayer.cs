@@ -44,4 +44,19 @@ public interface IPlayer
 
     Task NextAsync(CancellationToken cancellationToken = default);
     Task PreviousAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Append sources to the playlist. Starts playing if nothing was loaded.</summary>
+    Task EnqueueAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default);
+
+    /// <summary>Jump to an explicit playlist entry and start playing it.</summary>
+    Task PlayAtAsync(int index, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Drop a playlist entry. Removing the entry that is currently playing advances
+    /// to the one that takes its place, or stops when the list empties.
+    /// </summary>
+    Task RemoveAtAsync(int index, CancellationToken cancellationToken = default);
+
+    /// <summary>Empty the playlist and stop playback.</summary>
+    void ClearPlaylist();
 }

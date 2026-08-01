@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
+using Luma.Presentation.ViewModels;
 
 namespace Luma.Presentation;
 
@@ -50,6 +51,15 @@ public partial class MainWindow : Window
         var overlay = this.FindControl<Panel>("VideoOverlay");
         if (overlay is not null)
             overlay.DataContext = DataContext;
+    }
+
+    /// <summary>Double-clicking a playlist row plays it, the usual convention.</summary>
+    private void OnPlaylistDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && vm.PlaySelectedCommand.CanExecute(null))
+            vm.PlaySelectedCommand.Execute(null);
+
+        e.Handled = true;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

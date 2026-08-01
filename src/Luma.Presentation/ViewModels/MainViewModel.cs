@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Luma.Application;
 using Luma.Domain.Media;
 using Luma.Domain.Playback;
+using Luma.Domain.Playlists;
 using Luma.Presentation.Services;
 
 namespace Luma.Presentation.ViewModels;
@@ -46,12 +47,44 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private MediaTrack? _selectedAudioTrack;
     [ObservableProperty] private MediaTrack? _selectedSubtitle;
+    [ObservableProperty] private double _selectedRate = 1.0;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NextCommand))]
+    private bool _canGoNext;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PreviousCommand))]
+    private bool _canGoPrevious;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RepeatLabel))]
+    private RepeatMode _repeat;
+
+    [ObservableProperty] private bool _isPlaylistVisible;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlaySelectedCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCommand))]
+    private PlaylistItemViewModel? _selectedPlaylistItem;
 
     /// <summary>Sentinel item representing "no subtitles" in the subtitle dropdown.</summary>
     public static readonly MediaTrack SubtitlesOff = MediaTrack.Subtitle(-1, "Subtitles off");
 
+    /// <summary>Speed presets offered in the rate dropdown.</summary>
+    public IReadOnlyList<double> RateOptions { get; } =
+        [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0, 4.0];
+
     public ObservableCollection<MediaTrack> AudioTracks { get; } = [];
     public ObservableCollection<MediaTrack> SubtitleOptions { get; } = [];
+    public ObservableCollection<PlaylistItemViewModel> Playlist { get; } = [];
+
+    public string RepeatLabel => Repeat switch
+    {
+        RepeatMode.One => "Repeat: one",
+        RepeatMode.All => "Repeat: all",
+        _ => "Repeat: off"
+    };
 
     public MainViewModel(IPlayer player, IFilePicker filePicker)
     {
@@ -125,8 +158,57 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void VolumeDown() => Volume = Math.Max(0, Volume - 5);
 
+    /// <summary>Append paths to the current playlist instead of replacing it.</summary>
+    public async Task EnqueuePathsAsync(IReadOnlyList<string> paths)
+    {
+        if (paths.Count == 0)
+            return;
+
+        await RunAsync(() => _player.EnqueueAsync(paths.Select(MediaSource.FromFile).ToArray()));
+    }
+
     [RelayCommand]
     private void ToggleMute() => _player.ToggleMute();
+
+    [RelayCommand(CanExecute = nameof(CanGoNext))]
+    private Task NextAsync() => RunAsync(() => _player.NextAsync());
+
+    [RelayCommand(CanExecute = nameof(CanGoPrevious))]
+    private Task PreviousAsync() => RunAsync(() => _player.PreviousAsync());
+
+    /// <summary>Cycle Off → All → One → Off, the order MPC-HC and friends use.</summary>
+    [RelayCommand]
+    private void CycleRepeat() => _player.SetRepeat(Repeat switch
+    {
+        RepeatMode.None => RepeatMode.All,
+        RepeatMode.All => RepeatMode.One,
+        _ => RepeatMode.None
+    });
+
+    [RelayCommand]
+    private void TogglePlaylist() => IsPlaylistVisible = !IsPlaylistVisible;
+
+    [RelayCommand(CanExecute = nameof(HasPlaylistSelection))]
+    private Task PlaySelectedAsync()
+    {
+        var index = IndexOfSelected();
+        return index < 0 ? Task.CompletedTask : RunAsync(() => _player.PlayAtAsync(index));
+    }
+
+    [RelayCommand(CanExecute = nameof(HasPlaylistSelection))]
+    private Task RemoveSelectedAsync()
+    {
+        var index = IndexOfSelected();
+        return index < 0 ? Task.CompletedTask : RunAsync(() => _player.RemoveAtAsync(index));
+    }
+
+    [RelayCommand]
+    private void ClearPlaylist() => _player.ClearPlaylist();
+
+    private bool HasPlaylistSelection => SelectedPlaylistItem is not null;
+
+    private int IndexOfSelected() =>
+        SelectedPlaylistItem is null ? -1 : Playlist.IndexOf(SelectedPlaylistItem);
 
     private void SeekBy(TimeSpan delta)
     {
@@ -152,6 +234,12 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     partial void OnIsPlayingChanged(bool value) => OnPropertyChanged(nameof(PlayPauseGlyph));
+
+    partial void OnSelectedRateChanged(double value)
+    {
+        if (_applyingSnapshot) return;
+        _player.SetRate(PlaybackRate.Of(value));
+    }
 
     partial void OnSelectedAudioTrackChanged(MediaTrack? value)
     {
@@ -185,8 +273,13 @@ public sealed partial class MainViewModel : ObservableObject
             DurationText = Format(s.Duration);
             Volume = s.Volume.Level;
             IsMuted = s.IsMuted;
+            SelectedRate = s.Rate.Multiplier;
+            Repeat = s.Repeat;
+            CanGoNext = s.CanGoNext;
+            CanGoPrevious = s.CanGoPrevious;
             StatusText = DescribeStatus(s);
             SyncTracks(s);
+            SyncPlaylist(s);
         }
         finally
         {
@@ -219,6 +312,31 @@ public sealed partial class MainViewModel : ObservableObject
 
         SelectedAudioTrack = s.SelectedAudioTrack;
         SelectedSubtitle = s.SelectedSubtitleTrack ?? SubtitlesOff;
+    }
+
+    /// <summary>
+    /// Refresh the playlist panel. Like the track dropdowns this rebuilds only when the
+    /// entries actually changed — snapshots arrive on every position tick, and replacing
+    /// the rows each time would drop the user's selection. The "now playing" highlight is
+    /// updated in place, since it changes without the entries changing.
+    /// </summary>
+    private void SyncPlaylist(PlayerSnapshot s)
+    {
+        if (!Playlist.Select(i => i.Source).SequenceEqual(s.PlaylistItems))
+        {
+            var previous = SelectedPlaylistItem?.Source;
+
+            Playlist.Clear();
+            foreach (var source in s.PlaylistItems)
+                Playlist.Add(new PlaylistItemViewModel(source));
+
+            SelectedPlaylistItem = previous is null
+                ? null
+                : Playlist.FirstOrDefault(i => i.Source == previous);
+        }
+
+        for (var i = 0; i < Playlist.Count; i++)
+            Playlist[i].IsCurrent = i == s.PlaylistIndex;
     }
 
     private static string DescribeStatus(PlayerSnapshot s) => s.Status switch
