@@ -3,7 +3,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Luma.Application;
+using Luma.Application.Abstractions;
 using Luma.Application.Preferences;
+using Luma.Application.Updates;
 using Luma.Domain.Media;
 using Luma.Domain.Playback;
 using Luma.Domain.Playlists;
@@ -16,6 +18,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IPlayer _player;
     private readonly IFilePicker _filePicker;
     private readonly PreferenceTracker _preferences;
+    private readonly IUpdateService _updates;
+    private readonly IInstallerLauncher _installerLauncher;
 
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
@@ -96,6 +100,29 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool HasRecentFiles => RecentFiles.Count > 0;
 
+    // ---- Updates ----
+
+    private AvailableUpdate? _availableUpdate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateBannerText))]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallUpdateCommand))]
+    private bool _isDownloadingUpdate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateBannerText))]
+    private string _updateStatus = "";
+
+    public string UpdateBannerText =>
+        !string.IsNullOrEmpty(UpdateStatus)
+            ? UpdateStatus
+            : _availableUpdate is { } update
+                ? $"Luma {update.Version} is available"
+                : "";
+
     public string RepeatLabel => Repeat switch
     {
         RepeatMode.One => "Repeat: one",
@@ -103,11 +130,18 @@ public sealed partial class MainViewModel : ObservableObject
         _ => "Repeat: off"
     };
 
-    public MainViewModel(IPlayer player, IFilePicker filePicker, PreferenceTracker preferences)
+    public MainViewModel(
+        IPlayer player,
+        IFilePicker filePicker,
+        PreferenceTracker preferences,
+        IUpdateService updates,
+        IInstallerLauncher installerLauncher)
     {
         _player = player;
         _filePicker = filePicker;
         _preferences = preferences;
+        _updates = updates;
+        _installerLauncher = installerLauncher;
         _player.Changed += OnPlayerChanged;
         _preferences.RecentFilesChanged += OnRecentFilesChanged;
         Apply(_player.Snapshot);
@@ -243,6 +277,60 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatusText = $"Error: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Ask the update server whether something newer exists. Fire-and-forget from
+    /// startup: a missing or unreachable server leaves the banner hidden and is never
+    /// reported, because nobody opened a video player to hear about a web request.
+    /// </summary>
+    public async Task CheckForUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        var update = await _updates.CheckAsync(cancellationToken);
+        if (update is null)
+            return;
+
+        _availableUpdate = update;
+        IsUpdateAvailable = true;
+        OnPropertyChanged(nameof(UpdateBannerText));
+    }
+
+    [RelayCommand(CanExecute = nameof(CanInstallUpdate))]
+    private async Task InstallUpdateAsync()
+    {
+        if (_availableUpdate is not { } update)
+            return;
+
+        IsDownloadingUpdate = true;
+        try
+        {
+            var progress = new Progress<double>(p =>
+                UpdateStatus = $"Downloading Luma {update.Version}… {p:P0}");
+
+            var installer = await _updates.DownloadAsync(update, progress);
+
+            UpdateStatus = "Starting the installer…";
+            _installerLauncher.LaunchAndExit(installer);
+        }
+        catch (Exception ex)
+        {
+            // Covers an interrupted download, a hash mismatch, and a refused launch.
+            UpdateStatus = $"Update failed: {ex.Message}";
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
+        }
+    }
+
+    private bool CanInstallUpdate => !IsDownloadingUpdate;
+
+    /// <summary>Hide the banner until the next launch.</summary>
+    [RelayCommand]
+    private void DismissUpdate()
+    {
+        IsUpdateAvailable = false;
+        UpdateStatus = "";
     }
 
     /// <summary>Reopen an entry from the recent-files menu.</summary>
