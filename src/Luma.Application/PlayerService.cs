@@ -415,6 +415,7 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
 
     private PlayerSnapshot BuildSnapshot() => new(
         _session.Status,
+        _session.Source,
         _session.Source?.DisplayName,
         _session.Position,
         _session.Duration,

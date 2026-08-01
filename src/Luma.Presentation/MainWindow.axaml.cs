@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -5,6 +6,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
+using Luma.Presentation.Services;
 using Luma.Presentation.ViewModels;
 
 namespace Luma.Presentation;
@@ -22,6 +24,7 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(PointerMovedEvent, OnPointerMovedAnywhere, RoutingStrategies.Tunnel);
         _idleTimer.Tick += OnIdleElapsed;
+        Resized += OnResized;
 
         // The video overlay lives in VideoView's own floating window, so routed events
         // raised there never reach this one — it needs the handlers of its own.
@@ -76,6 +79,42 @@ public partial class MainWindow : Window
             vm.StatusText = $"Error: {ex.Message}";
         }
     }
+
+    /// <summary>Restore remembered geometry. Ignores sizes that no longer fit a screen.</summary>
+    public void ApplyPlacement(WindowPlacement placement)
+    {
+        if (placement.Width >= MinWidth && placement.Height >= MinHeight)
+        {
+            Width = placement.Width;
+            Height = placement.Height;
+            _lastNormalSize = new Size(placement.Width, placement.Height);
+        }
+
+        if (placement.IsMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
+    /// <summary>
+    /// The size the window last had while merely windowed. Maximized and fullscreen
+    /// sizes are the screen's rather than the user's choice, so they are not what we
+    /// want to restore to.
+    /// </summary>
+    private Size _lastNormalSize = new(960, 600);
+
+    private void OnResized(object? sender, WindowResizedEventArgs e)
+    {
+        if (WindowState is WindowState.Normal)
+            _lastNormalSize = new Size(Width, Height);
+    }
+
+    /// <summary>Snapshot the geometry worth remembering for next launch.</summary>
+    public WindowPlacement CapturePlacement(bool isPlaylistVisible) => new()
+    {
+        Width = _lastNormalSize.Width,
+        Height = _lastNormalSize.Height,
+        IsMaximized = WindowState is WindowState.Maximized,
+        IsPlaylistVisible = isPlaylistVisible
+    };
 
     /// <summary>Wire the concrete LibVLC player into the video surface (composition-root concern).</summary>
     public void AttachEngine(LibVlcMediaEngine engine)

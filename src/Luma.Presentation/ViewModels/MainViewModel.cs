@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Luma.Application;
+using Luma.Application.Preferences;
 using Luma.Domain.Media;
 using Luma.Domain.Playback;
 using Luma.Domain.Playlists;
@@ -14,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IPlayer _player;
     private readonly IFilePicker _filePicker;
+    private readonly PreferenceTracker _preferences;
 
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
@@ -79,6 +81,11 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<MediaTrack> SubtitleOptions { get; } = [];
     public ObservableCollection<PlaylistItemViewModel> Playlist { get; } = [];
 
+    /// <summary>Previously opened files, most recent first.</summary>
+    public ObservableCollection<RecentFileViewModel> RecentFiles { get; } = [];
+
+    public bool HasRecentFiles => RecentFiles.Count > 0;
+
     public string RepeatLabel => Repeat switch
     {
         RepeatMode.One => "Repeat: one",
@@ -86,12 +93,15 @@ public sealed partial class MainViewModel : ObservableObject
         _ => "Repeat: off"
     };
 
-    public MainViewModel(IPlayer player, IFilePicker filePicker)
+    public MainViewModel(IPlayer player, IFilePicker filePicker, PreferenceTracker preferences)
     {
         _player = player;
         _filePicker = filePicker;
+        _preferences = preferences;
         _player.Changed += OnPlayerChanged;
+        _preferences.RecentFilesChanged += OnRecentFilesChanged;
         Apply(_player.Snapshot);
+        SyncRecentFiles();
     }
 
     public string PlayPauseGlyph => IsPlaying ? "❚❚" : "▶";
@@ -205,6 +215,11 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ClearPlaylist() => _player.ClearPlaylist();
 
+    /// <summary>Reopen an entry from the recent-files menu.</summary>
+    [RelayCommand]
+    private Task OpenRecentAsync(RecentFileViewModel? recent) =>
+        recent is null ? Task.CompletedTask : OpenPathsAsync([recent.FullPath]);
+
     private bool HasPlaylistSelection => SelectedPlaylistItem is not null;
 
     private int IndexOfSelected() =>
@@ -255,6 +270,18 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void OnPlayerChanged(object? sender, PlayerSnapshot snapshot) =>
         Dispatcher.UIThread.Post(() => Apply(snapshot));
+
+    private void OnRecentFilesChanged(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(SyncRecentFiles);
+
+    private void SyncRecentFiles()
+    {
+        RecentFiles.Clear();
+        foreach (var location in _preferences.RecentFiles)
+            RecentFiles.Add(new RecentFileViewModel(location));
+
+        OnPropertyChanged(nameof(HasRecentFiles));
+    }
 
     private void Apply(PlayerSnapshot s)
     {
