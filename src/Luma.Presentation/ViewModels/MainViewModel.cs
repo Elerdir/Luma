@@ -21,6 +21,19 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "Ready";
     [ObservableProperty] private bool _hasMedia;
     [ObservableProperty] private bool _isPlaying;
+
+    // Mirrors the domain's transition rules. Bound to IsEnabled/CanExecute so a click
+    // or shortcut can never reach the aggregate in a state that would throw.
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
+    private bool _canPlayPause;
+
+    [ObservableProperty] private bool _canSeek;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StopCommand))]
+    private bool _canStop;
+
     [ObservableProperty] private double _durationSeconds;
     [ObservableProperty] private double _positionSeconds;
     [ObservableProperty] private string _positionText = "00:00";
@@ -49,17 +62,42 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task OpenAsync()
     {
         var paths = await _filePicker.PickVideosAsync();
+        await OpenPathsAsync(paths);
+    }
+
+    /// <summary>
+    /// Open a set of paths as a new playlist. Anything the backend or the domain
+    /// rejects is reported in the status line rather than escaping into the dispatcher
+    /// as an unhandled exception.
+    /// </summary>
+    public async Task OpenPathsAsync(IReadOnlyList<string> paths)
+    {
         if (paths.Count == 0)
             return;
 
-        var sources = paths.Select(MediaSource.FromFile).ToArray();
-        await _player.OpenAsync(sources);
+        await RunAsync(() => _player.OpenAsync(paths.Select(MediaSource.FromFile).ToArray()));
     }
 
-    [RelayCommand]
+    /// <summary>
+    /// Run a player operation, reporting failures in the status line. An unhandled
+    /// rejection from an async command would otherwise take the process down.
+    /// </summary>
+    private async Task RunAsync(Func<Task> operation)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause() => _player.TogglePlayPause();
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanStop))]
     private void Stop() => _player.Stop();
 
     [RelayCommand]
@@ -98,7 +136,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void SeekBy(TimeSpan delta)
     {
-        if (!HasMedia)
+        if (!CanSeek)
             return;
 
         var target = TimeSpan.FromSeconds(PositionSeconds) + delta;
@@ -115,7 +153,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnPositionSecondsChanged(double value)
     {
-        if (_applyingSnapshot) return;
+        if (_applyingSnapshot || !CanSeek) return;
         _player.SeekTo(TimeSpan.FromSeconds(value));
     }
 
@@ -143,6 +181,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             HasMedia = s.HasMedia;
             IsPlaying = s.IsPlaying;
+            CanPlayPause = s.CanTogglePlayPause;
+            CanSeek = s.CanSeek;
+            CanStop = s.CanStop;
             MediaName = s.MediaName ?? "No media loaded";
             DurationSeconds = s.Duration.TotalSeconds;
             PositionSeconds = s.Position.TotalSeconds;

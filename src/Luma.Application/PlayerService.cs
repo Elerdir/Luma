@@ -87,8 +87,28 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
 
     public void TogglePlayPause()
     {
-        if (Snapshot.IsPlaying) Pause();
-        else Play();
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            // Decided inside the lock: reading the status first and acting after would
+            // let an engine callback flip the state in between and desync the engine.
+            var restartFromEnd = _session.Status is PlaybackStatus.Ended;
+            _session.TogglePlayPause();
+
+            if (_session.IsPlaying)
+            {
+                if (restartFromEnd)
+                    _engine.SeekTo(TimeSpan.Zero);
+                _engine.Play();
+            }
+            else
+            {
+                _engine.Pause();
+            }
+
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
     }
 
     public void Stop()
@@ -251,7 +271,30 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         Publish(snapshot);
 
         if (advance)
-            _ = LoadCurrentAsync(CancellationToken.None);
+            _ = LoadNextInBackgroundAsync();
+    }
+
+    /// <summary>
+    /// Auto-advance runs detached from any caller, so a failure to open the next item
+    /// has nowhere to propagate. Surface it as a fault instead of losing it on a
+    /// finalizer thread.
+    /// </summary>
+    private async Task LoadNextInBackgroundAsync()
+    {
+        try
+        {
+            await LoadCurrentAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            PlayerSnapshot snapshot;
+            lock (_gate)
+            {
+                _session.Fault(ex.Message);
+                snapshot = BuildSnapshot();
+            }
+            Publish(snapshot);
+        }
     }
 
     private void OnEngineFailed(object? sender, MediaFailedEventArgs e)
