@@ -237,14 +237,6 @@
                         <TextBlock Text="{loc:Localize App.OpenPrompt}"
                                    Foreground="#7A7F8A" FontSize="13" HorizontalAlignment="Center" />
                     </StackPanel>
-
-                    <!--
-                      In fullscreen the transport bar is re-parented into this host so it
-                      floats over the video. It has to live inside VideoOverlay: that is the
-                      only layer stacked above the native video surface.
-                    -->
-                    <Panel Name="FullscreenTransportHost"
-                           VerticalAlignment="Bottom" IsVisible="False" />
                 </Panel>
             </vlc:VideoView>
         </Panel>
