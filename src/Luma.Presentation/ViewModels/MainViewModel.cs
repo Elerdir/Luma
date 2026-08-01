@@ -31,7 +31,9 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
     private bool _canPlayPause;
 
-    [ObservableProperty] private bool _canSeek;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LoadSubtitleCommand))]
+    private bool _canSeek;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StopCommand))]
@@ -214,6 +216,23 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void ClearPlaylist() => _player.ClearPlaylist();
+
+    [RelayCommand(CanExecute = nameof(CanSeek))]
+    private async Task LoadSubtitleAsync()
+    {
+        var path = await _filePicker.PickSubtitleAsync();
+        if (path is null)
+            return;
+
+        try
+        {
+            _player.AddSubtitleFile(MediaSource.FromFile(path));
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Error: {ex.Message}";
+        }
+    }
 
     /// <summary>Reopen an entry from the recent-files menu.</summary>
     [RelayCommand]

@@ -27,6 +27,14 @@ public interface IMediaEngine : IAsyncDisposable
     /// <summary>Activate a subtitle stream, or pass <c>null</c> to turn subtitles off.</summary>
     void SelectSubtitleTrack(MediaTrack? track);
 
+    /// <summary>
+    /// Attach an external subtitle file to the current media. The new stream shows up
+    /// via <see cref="TracksChanged"/> once the backend has registered it.
+    /// </summary>
+    /// <param name="file">The subtitle file.</param>
+    /// <param name="select">Whether to make it the active subtitle stream.</param>
+    void AddSubtitleFile(MediaSource file, bool select);
+
     /// <summary>The source finished opening and its duration is known.</summary>
     event EventHandler<MediaOpenedEventArgs>? Opened;
 
@@ -35,6 +43,12 @@ public interface IMediaEngine : IAsyncDisposable
 
     /// <summary>The current media reached its end.</summary>
     event EventHandler? EndReached;
+
+    /// <summary>
+    /// The set of selectable streams changed after opening — typically because an
+    /// external subtitle file was attached.
+    /// </summary>
+    event EventHandler<TracksChangedEventArgs>? TracksChanged;
 
     /// <summary>The backend encountered an unrecoverable error.</summary>
     event EventHandler<MediaFailedEventArgs>? Failed;

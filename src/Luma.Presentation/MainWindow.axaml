@@ -202,6 +202,9 @@
                                   SelectedItem="{Binding SelectedSubtitle, Mode=TwoWay}"
                                   MinWidth="110" MaxWidth="160"
                                   ToolTip.Tip="Subtitles" />
+                        <Button Content="＋" Command="{Binding LoadSubtitleCommand}"
+                                IsVisible="{Binding HasMedia}"
+                                ToolTip.Tip="Load an external subtitle file" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"

@@ -44,10 +44,19 @@ public sealed class FakeMediaEngine : IMediaEngine
         SubtitleSelectionCount++;
     }
 
+    /// <summary>Subtitle files attached so far, with whether each was asked to be selected.</summary>
+    public List<(MediaSource File, bool Select)> AddedSubtitles { get; } = [];
+
+    public void AddSubtitleFile(MediaSource file, bool select) => AddedSubtitles.Add((file, select));
+
     public event EventHandler<MediaOpenedEventArgs>? Opened;
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler? EndReached;
+    public event EventHandler<TracksChangedEventArgs>? TracksChanged;
     public event EventHandler<MediaFailedEventArgs>? Failed;
+
+    public void RaiseTracksChanged(IReadOnlyList<MediaTrack> tracks) =>
+        TracksChanged?.Invoke(this, new TracksChangedEventArgs(tracks));
 
     public void RaiseOpened(TimeSpan duration, IReadOnlyList<MediaTrack>? tracks = null) =>
         Opened?.Invoke(this, new MediaOpenedEventArgs(duration, tracks ?? []));
