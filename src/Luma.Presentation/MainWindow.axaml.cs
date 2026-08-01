@@ -23,6 +23,9 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(PointerMovedEvent, OnPointerMovedAnywhere, RoutingStrategies.Tunnel);
+        // Bubble, so a control that scrolls on its own — a combo box, a slider — gets
+        // the wheel first and this only sees what nothing else wanted.
+        AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Bubble);
         _idleTimer.Tick += OnIdleElapsed;
         Resized += OnResized;
 
@@ -35,6 +38,7 @@ public partial class MainWindow : Window
             overlay.AddHandler(DragDrop.DragOverEvent, OnDragOver);
             overlay.AddHandler(DragDrop.DropEvent, OnDrop);
             overlay.AddHandler(PointerMovedEvent, OnPointerMovedAnywhere, RoutingStrategies.Tunnel);
+            overlay.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Bubble);
         }
     }
 
@@ -243,6 +247,24 @@ public partial class MainWindow : Window
         // Grid.Row/Column are attached to the Border itself, so they survive the move.
         root.Children.Add(transport);
         transport.IsVisible = true;
+    }
+
+    /// <summary>
+    /// Wheel anywhere over the window changes the volume, the way every other media
+    /// player behaves. Reaching here at all means no control underneath the pointer
+    /// claimed the wheel for its own scrolling.
+    /// </summary>
+    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || e.Delta.Y == 0)
+            return;
+
+        if (e.Delta.Y > 0)
+            vm.VolumeUpCommand.Execute(null);
+        else
+            vm.VolumeDownCommand.Execute(null);
+
+        e.Handled = true;
     }
 
     private void OnPointerMovedAnywhere(object? sender, PointerEventArgs e)
