@@ -188,6 +188,9 @@
                             <MenuItem Header="{loc:Localize Menu.Playlist}" ToggleType="CheckBox"
                                       IsChecked="{Binding IsPlaylistVisible}"
                                       Command="{Binding TogglePlaylistCommand}" InputGesture="L" />
+                            <MenuItem Header="{loc:Localize Menu.LoadWholeFolder}" ToggleType="CheckBox"
+                                      IsChecked="{Binding LoadWholeFolder}"
+                                      Command="{Binding ToggleLoadWholeFolderCommand}" />
                             <MenuItem Header="{loc:Localize Menu.Fullscreen}"
                                       Click="OnFullscreenMenuClick" InputGesture="F" />
 

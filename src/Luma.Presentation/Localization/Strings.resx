@@ -106,6 +106,7 @@
   <data name="Menu.RepeatOne" xml:space="preserve"><value>One</value></data>
   <data name="Menu.RepeatAll" xml:space="preserve"><value>All</value></data>
   <data name="Menu.Playlist" xml:space="preserve"><value>Show playlist</value></data>
+  <data name="Menu.LoadWholeFolder" xml:space="preserve"><value>Open the whole folder</value></data>
   <data name="Menu.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Menu.Fullscreen" xml:space="preserve"><value>Fullscreen</value></data>
 </root>

@@ -39,7 +39,7 @@ other for every status.
 - Fullscreen with auto-hiding controls and cursor
 - Drag and drop files onto the window (hold <kbd>Shift</kbd> to append)
 - Opening one file loads its folder, in episode order — <kbd>Page Down</kbd> is the next
-  episode
+  episode. Switchable off in the right-click menu
 - Remembers volume, mute, repeat and window size — and resumes each file where you left
   it
 
@@ -212,6 +212,13 @@ settings type under the user's application data directory:
 
 Deleting them resets Luma to a fresh install. A missing or corrupt file falls back to
 defaults rather than blocking startup.
+
+`InterfaceOptions.json` holds the choices made from the right-click menu:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Language` | `""` | Culture name (`cs`, `en`); empty follows the operating system |
+| `LoadWholeFolder` | `true` | Whether opening one file also loads the rest of its folder |
 
 ## Icons
 

@@ -48,6 +48,13 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
 
     public event EventHandler<PlayerSnapshot>? Changed;
 
+    /// <summary>
+    /// Whether opening a single file picks up the rest of its folder. Plain state
+    /// rather than part of the snapshot: it changes what the next open will do, not
+    /// what is playing now, and nothing in the player reacts to it changing.
+    /// </summary>
+    public bool LoadWholeFolder { get; set; } = true;
+
     public PlayerSnapshot Snapshot
     {
         get { lock (_gate) return BuildSnapshot(); }
@@ -84,13 +91,14 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
     /// between episodes.
     /// <para>
     /// Only for a single file: picking several files, or dragging a handful in, is an
-    /// explicit choice of what to play and is taken literally.
+    /// explicit choice of what to play and is taken literally — which is why
+    /// <see cref="LoadWholeFolder"/> does not enter into that case at all.
     /// </para>
     /// </summary>
     private (IReadOnlyList<MediaSource> Entries, int StartAt) ExpandToFolder(
         IReadOnlyList<MediaSource> sources)
     {
-        if (_folderScanner is null || sources.Count != 1)
+        if (_folderScanner is null || !LoadWholeFolder || sources.Count != 1)
             return (sources, 0);
 
         var opened = sources[0];

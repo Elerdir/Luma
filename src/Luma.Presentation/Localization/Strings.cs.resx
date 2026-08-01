@@ -100,6 +100,7 @@
   <data name="Menu.RepeatOne" xml:space="preserve"><value>Jedno</value></data>
   <data name="Menu.RepeatAll" xml:space="preserve"><value>Vše</value></data>
   <data name="Menu.Playlist" xml:space="preserve"><value>Zobrazit seznam stop</value></data>
+  <data name="Menu.LoadWholeFolder" xml:space="preserve"><value>Otevírat celou složku</value></data>
   <data name="Menu.Language" xml:space="preserve"><value>Jazyk</value></data>
   <data name="Menu.Fullscreen" xml:space="preserve"><value>Celá obrazovka</value></data>
 </root>
