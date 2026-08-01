@@ -10,7 +10,8 @@
         Title="Luma" Icon="/Assets/luma.png"
         Width="960" Height="600"
         MinWidth="560" MinHeight="360"
-        Background="#0E0F13">
+        Background="#0E0F13"
+        DragDrop.AllowDrop="True">
 
     <Window.KeyBindings>
         <KeyBinding Gesture="Space" Command="{Binding PlayPauseCommand}" />
