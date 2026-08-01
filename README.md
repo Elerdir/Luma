@@ -89,6 +89,29 @@ Open a file directly (file association / CLI):
 dotnet run --project src/Luma.Presentation -- "C:\videos\clip.mkv"
 ```
 
+### Windows helper scripts
+
+`run.bat` builds and starts the app straight from source, for quick testing:
+
+```bat
+run.bat "D:\video\clip.mkv"
+```
+
+`instalator.bat` produces an MSI in `dist\`:
+
+```bat
+instalator.bat
+```
+
+It publishes a **self-contained** `win-x64` build first, so the installed app needs no
+.NET runtime on the target machine — which is why the MSI is around 110 MB. Pass a
+version to override the one in `Directory.Build.props`: `instalator.bat 1.2.0`.
+
+The script installs the WiX CLI if it is missing, pinned to **5.x**. From v6 onwards WiX
+is gated behind the Open Source Maintenance Fee EULA; accepting that is a licensing
+decision for whoever ships the app, so the build script does not do it on your behalf.
+WiX 5 is MS-RL and needs no agreement.
+
 ## Keyboard shortcuts
 
 | Key | Action |

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Windows installer definition. Built by ..\instalator.bat, which publishes a
+  self-contained build first and passes its folder in as PublishDir.
+
+  The GUIDs below are stable on purpose: UpgradeCode identifies the product
+  across all versions, and the component GUIDs identify the shortcuts. Changing
+  any of them turns an upgrade into a second parallel installation.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package Name="Luma"
+           Manufacturer="Elerdir"
+           Version="$(var.Version)"
+           UpgradeCode="A2AD0E72-CDDE-4582-B34B-891E9A5AFF63"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of Luma is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="LumaIcon" SourceFile="$(var.IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="LumaIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Elerdir/Luma" />
+
+    <!-- Self-contained publish: no .NET runtime prerequisite to check for. -->
+    <Feature Id="Main" Title="Luma" Level="1">
+      <ComponentGroupRef Id="LumaBinaries" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Luma" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="LumaStartMenuFolder" Name="Luma" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+  </Fragment>
+
+  <Fragment>
+    <!-- Harvested from the publish output rather than listed by hand: a self-contained
+         Avalonia build is several hundred files and they change with every SDK bump. -->
+    <ComponentGroup Id="LumaBinaries" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="StartMenuShortcut" Directory="LumaStartMenuFolder"
+               Guid="489DBD30-E7CF-4FA0-883D-9C068CA964A4">
+      <Shortcut Id="StartMenuLuma"
+                Name="Luma"
+                Description="Play a video"
+                Target="[INSTALLFOLDER]Luma.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="LumaIcon" />
+      <RemoveFolder Id="RemoveStartMenuFolder" Directory="LumaStartMenuFolder" On="uninstall" />
+      <!-- A shortcut cannot be its own key path, so the component is keyed on a
+           registry value instead. Standard MSI shortcut pattern. -->
+      <RegistryValue Root="HKCU" Key="Software\Elerdir\Luma"
+                     Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Component Id="DesktopShortcut" Directory="DesktopFolder"
+               Guid="C3E342A2-E747-4C9D-A4B9-7175A7F70234">
+      <Shortcut Id="DesktopLuma"
+                Name="Luma"
+                Description="Play a video"
+                Target="[INSTALLFOLDER]Luma.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="LumaIcon" />
+      <RegistryValue Root="HKCU" Key="Software\Elerdir\Luma"
+                     Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+</Wix>
