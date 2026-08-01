@@ -5,8 +5,10 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
+using Luma.Presentation.Controls;
 using Luma.Presentation.Localization;
 using Luma.Presentation.Services;
 using Luma.Presentation.ViewModels;
@@ -133,8 +135,20 @@ public partial class MainWindow : Window
 
     private DateTime _lastFullscreenToggle = DateTime.MinValue;
 
+    /// <summary>
+    /// Whether an event came from inside the floating controls. They sit inside the
+    /// video overlay, so their clicks bubble to the handlers watching the video —
+    /// without this, double-clicking Play would also toggle fullscreen and
+    /// right-clicking the seek bar would open the video's menu.
+    /// </summary>
+    private static bool CameFromTransportBar(object? source) =>
+        source is Visual visual && visual.FindAncestorOfType<TransportBar>() is not null;
+
     private void OnVideoAreaDoubleTapped(object? sender, TappedEventArgs e)
     {
+        if (CameFromTransportBar(e.Source))
+            return;
+
         // VideoView hosts the overlay in a separate floating window and forwards its
         // pointer input onward, so one physical double-click surfaces twice. Without
         // this guard the two deliveries toggle fullscreen on and straight back off.
@@ -196,7 +210,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnVideoPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton is not MouseButton.Right)
+        if (e.InitialPressMouseButton is not MouseButton.Right || CameFromTransportBar(e.Source))
             return;
 
         var overlay = this.FindControl<Panel>("VideoOverlay");
@@ -226,30 +240,35 @@ public partial class MainWindow : Window
 
         _isFullscreen = on;
 
+        var docked = this.FindControl<TransportBar>("DockedTransport");
+
         if (on)
         {
             _stateBeforeFullscreen = WindowState;
             WindowState = WindowState.FullScreen;
+
+            // The docked copy goes away entirely so the video gets the whole screen;
+            // the floating one takes over and auto-hides.
+            if (docked is not null) docked.IsVisible = false;
             RevealControls();
         }
         else
         {
             _idleTimer.Stop();
-            ShowControls();
+            SetControlsVisible(false);
+            if (docked is not null) docked.IsVisible = true;
             ShowCursor();
             WindowState = _stateBeforeFullscreen;
         }
     }
 
-    // ---- Fullscreen chrome: hide the transport bar and cursor while idle ----
+    // ---- Fullscreen chrome: float the controls over the video and hide them while idle ----
     //
-    // An earlier attempt re-parented the bar into a host inside the video overlay so it
-    // would float over the picture. That silently did nothing — the bar stayed docked
-    // and never hid — because the overlay lives in VideoView's own top-level window and
-    // moving a control between two of those is not something to rely on.
-    //
-    // Collapsing the docked bar instead is what actually works: its grid row goes away,
-    // so the video takes the whole screen, which is the point of hiding it.
+    // Two instances of one TransportBar: the docked one is hidden for the duration of
+    // fullscreen so the video has the whole screen, and the instance inside the video
+    // overlay floats over the picture instead. An earlier attempt re-parented a single
+    // instance between the two places and silently did nothing, because the overlay
+    // lives in VideoView's own top-level window and controls do not move between those.
 
     private static readonly TimeSpan IdleBeforeHiding = TimeSpan.FromSeconds(3);
     private static readonly Cursor HiddenCursor = new(StandardCursorType.None);
@@ -257,12 +276,10 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _idleTimer = new() { Interval = IdleBeforeHiding };
 
-    private void ShowControls() => SetControlsVisible(true);
-
     private void SetControlsVisible(bool visible)
     {
-        if (this.FindControl<Border>("TransportBar") is { } transport)
-            transport.IsVisible = visible;
+        if (this.FindControl<TransportBar>("FullscreenTransport") is { } floating)
+            floating.IsVisible = visible;
     }
 
     /// <summary>
@@ -313,7 +330,7 @@ public partial class MainWindow : Window
     /// <summary>Show the chrome and restart the idle countdown.</summary>
     private void RevealControls()
     {
-        ShowControls();
+        SetControlsVisible(true);
         ShowCursor();
 
         _idleTimer.Stop();
@@ -329,7 +346,7 @@ public partial class MainWindow : Window
 
         // Keep the bar up while the pointer rests on it, otherwise it vanishes from
         // under a user who is reaching for the seek slider.
-        var transport = this.FindControl<Border>("TransportBar");
+        var transport = this.FindControl<TransportBar>("FullscreenTransport");
         if (transport?.IsPointerOver == true)
         {
             _idleTimer.Start();
