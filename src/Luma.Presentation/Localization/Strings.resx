@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    English strings. This is the neutral (fallback) resource: any key missing from a
+    translation falls back here, so a partly translated language still works.
+
+    Adding a language means adding Strings.<culture>.resx next to this file and listing
+    the culture in Localizer.AvailableLanguages. Nothing else changes.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="App.OpenPrompt" xml:space="preserve"><value>Open a video to begin</value></data>
+  <data name="Media.None" xml:space="preserve"><value>No media loaded</value></data>
+
+  <data name="Status.Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Status.Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Status.Playing" xml:space="preserve"><value>Playing</value></data>
+  <data name="Status.Paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Status.Ended" xml:space="preserve"><value>Ended</value></data>
+  <data name="Status.Error" xml:space="preserve"><value>Error: {0}</value><comment>{0} is the error message</comment></data>
+
+  <data name="Button.Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Button.Recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="Button.Play" xml:space="preserve"><value>Play</value></data>
+  <data name="Button.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Button.Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Button.Install" xml:space="preserve"><value>Install</value></data>
+
+  <data name="Playlist.Title" xml:space="preserve"><value>Playlist</value></data>
+
+  <data name="Repeat.Off" xml:space="preserve"><value>Repeat: off</value></data>
+  <data name="Repeat.One" xml:space="preserve"><value>Repeat: one</value></data>
+  <data name="Repeat.All" xml:space="preserve"><value>Repeat: all</value></data>
+
+  <data name="Subtitles.Off" xml:space="preserve"><value>Subtitles off</value></data>
+
+  <data name="Tooltip.Open" xml:space="preserve"><value>Open files (Ctrl+O)</value></data>
+  <data name="Tooltip.Recent" xml:space="preserve"><value>Recently played</value></data>
+  <data name="Tooltip.Previous" xml:space="preserve"><value>Previous (P)</value></data>
+  <data name="Tooltip.Next" xml:space="preserve"><value>Next (N)</value></data>
+  <data name="Tooltip.Stop" xml:space="preserve"><value>Stop (S)</value></data>
+  <data name="Tooltip.Mute" xml:space="preserve"><value>Mute (M)</value></data>
+  <data name="Tooltip.Repeat" xml:space="preserve"><value>Cycle repeat mode (R)</value></data>
+  <data name="Tooltip.Playlist" xml:space="preserve"><value>Toggle playlist (L)</value></data>
+  <data name="Tooltip.Rate" xml:space="preserve"><value>Playback speed</value></data>
+  <data name="Tooltip.AudioTrack" xml:space="preserve"><value>Audio track</value></data>
+  <data name="Tooltip.Subtitles" xml:space="preserve"><value>Subtitles</value></data>
+  <data name="Tooltip.LoadSubtitle" xml:space="preserve"><value>Load an external subtitle file</value></data>
+  <data name="Tooltip.Language" xml:space="preserve"><value>Language</value></data>
+  <data name="Tooltip.DismissUpdate" xml:space="preserve"><value>Hide until next launch</value></data>
+
+  <data name="Update.Available" xml:space="preserve"><value>Luma {0} is available</value><comment>{0} is the new version</comment></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>Downloading Luma {0}… {1}</value><comment>{0} version, {1} percentage</comment></data>
+  <data name="Update.Starting" xml:space="preserve"><value>Starting the installer…</value></data>
+  <data name="Update.Failed" xml:space="preserve"><value>Update failed: {0}</value><comment>{0} is the error message</comment></data>
+
+  <data name="Picker.OpenVideo" xml:space="preserve"><value>Open video</value></data>
+  <data name="Picker.VideoFiles" xml:space="preserve"><value>Video files</value></data>
+  <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Open subtitle</value></data>
+  <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Subtitle files</value></data>
+
+  <data name="Language.System" xml:space="preserve"><value>System</value><comment>Follow the operating system language</comment></data>
+</root>

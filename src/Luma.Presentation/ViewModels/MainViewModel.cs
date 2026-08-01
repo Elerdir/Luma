@@ -9,6 +9,7 @@ using Luma.Application.Updates;
 using Luma.Domain.Media;
 using Luma.Domain.Playback;
 using Luma.Domain.Playlists;
+using Luma.Presentation.Localization;
 using Luma.Presentation.Services;
 
 namespace Luma.Presentation.ViewModels;
@@ -20,17 +21,20 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly PreferenceTracker _preferences;
     private readonly IUpdateService _updates;
     private readonly IInstallerLauncher _installerLauncher;
+    private readonly LanguageService _language;
 
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
+
+    private PlayerSnapshot? _lastSnapshot;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     private string _mediaName = NoMediaName;
 
-    private const string NoMediaName = "No media loaded";
+    private static string NoMediaName => Localizer.Instance["Media.None"];
 
-    [ObservableProperty] private string _statusText = "Ready";
+    [ObservableProperty] private string _statusText = Localizer.Instance["Status.Ready"];
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     private bool _hasMedia;
@@ -84,8 +88,14 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCommand))]
     private PlaylistItemViewModel? _selectedPlaylistItem;
 
-    /// <summary>Sentinel item representing "no subtitles" in the subtitle dropdown.</summary>
-    public static readonly MediaTrack SubtitlesOff = MediaTrack.Subtitle(-1, "Subtitles off");
+    /// <summary>
+    /// Sentinel item representing "no subtitles" in the subtitle dropdown. Recreated
+    /// when the language changes, because its label is part of it — the dropdown is
+    /// then rebuilt so the instance the selection is compared against stays the one in
+    /// the list.
+    /// </summary>
+    public MediaTrack SubtitlesOff { get; private set; } =
+        MediaTrack.Subtitle(-1, Localizer.Instance["Subtitles.Off"]);
 
     /// <summary>Speed presets offered in the rate dropdown.</summary>
     public IReadOnlyList<double> RateOptions { get; } =
@@ -120,28 +130,73 @@ public sealed partial class MainViewModel : ObservableObject
         !string.IsNullOrEmpty(UpdateStatus)
             ? UpdateStatus
             : _availableUpdate is { } update
-                ? $"Luma {update.Version} is available"
+                ? Localizer.Instance.Format("Update.Available", update.Version)
                 : "";
 
-    public string RepeatLabel => Repeat switch
+    public string RepeatLabel => Localizer.Instance[Repeat switch
     {
-        RepeatMode.One => "Repeat: one",
-        RepeatMode.All => "Repeat: all",
-        _ => "Repeat: off"
-    };
+        RepeatMode.One => "Repeat.One",
+        RepeatMode.All => "Repeat.All",
+        _ => "Repeat.Off"
+    }];
+
+    // ---- Language ----
+
+    public IReadOnlyList<LanguageOption> Languages => Localizer.AvailableLanguages;
+
+    /// <summary>
+    /// The language entry currently in force. Setting it applies and remembers the
+    /// choice; the setter is also what the picker binds to.
+    /// </summary>
+    public LanguageOption SelectedLanguage
+    {
+        get => Languages.FirstOrDefault(l => l.Code == Localizer.Instance.CurrentLanguage)
+               ?? Languages[0];
+        set
+        {
+            if (value is null || value.Code == Localizer.Instance.CurrentLanguage)
+                return;
+
+            _ = _language.SetAsync(value.Code);
+        }
+    }
+
+    /// <summary>
+    /// Re-publish everything this view-model composes itself. The XAML bindings handle
+    /// their own strings; these are the ones built in C#.
+    /// </summary>
+    private void RefreshLocalizedText()
+    {
+        SubtitlesOff = MediaTrack.Subtitle(-1, Localizer.Instance["Subtitles.Off"]);
+
+        OnPropertyChanged(nameof(RepeatLabel));
+        OnPropertyChanged(nameof(UpdateBannerText));
+        OnPropertyChanged(nameof(SelectedLanguage));
+
+        if (_lastSnapshot is { } snapshot)
+            Apply(snapshot);
+        else
+            MediaName = NoMediaName;
+    }
 
     public MainViewModel(
         IPlayer player,
         IFilePicker filePicker,
         PreferenceTracker preferences,
         IUpdateService updates,
-        IInstallerLauncher installerLauncher)
+        IInstallerLauncher installerLauncher,
+        LanguageService language)
     {
         _player = player;
         _filePicker = filePicker;
         _preferences = preferences;
         _updates = updates;
         _installerLauncher = installerLauncher;
+        _language = language;
+
+        // Text this view-model composes itself is not reached by the XAML localization
+        // bindings, so it has to be re-published when the language changes.
+        Localizer.Instance.PropertyChanged += (_, _) => RefreshLocalizedText();
         _player.Changed += OnPlayerChanged;
         _preferences.RecentFilesChanged += OnRecentFilesChanged;
         Apply(_player.Snapshot);
@@ -152,8 +207,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string VolumeGlyph => IsMuted ? "🔇" : "🔊";
 
-    /// <summary>Window caption: the file being played, falling back to the app name.</summary>
-    public string WindowTitle => HasMedia ? $"{MediaName} — Luma" : "Luma";
+    /// <summary>
+    /// Window caption. The app name leads so it sits next to the icon, with the file
+    /// after a colon: "Luma: clip.mkv". Just "Luma" when nothing is loaded.
+    /// </summary>
+    public string WindowTitle => HasMedia ? $"Luma: {MediaName}" : "Luma";
 
     [RelayCommand]
     private async Task OpenAsync()
@@ -187,7 +245,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Error: {ex.Message}";
+            StatusText = Localizer.Instance.Format("Status.Error", ex.Message);
         }
     }
 
@@ -275,7 +333,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Error: {ex.Message}";
+            StatusText = Localizer.Instance.Format("Status.Error", ex.Message);
         }
     }
 
@@ -305,17 +363,18 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var progress = new Progress<double>(p =>
-                UpdateStatus = $"Downloading Luma {update.Version}… {p:P0}");
+                UpdateStatus = Localizer.Instance.Format(
+                    "Update.Downloading", update.Version, p.ToString("P0")));
 
             var installer = await _updates.DownloadAsync(update, progress);
 
-            UpdateStatus = "Starting the installer…";
+            UpdateStatus = Localizer.Instance["Update.Starting"];
             _installerLauncher.LaunchAndExit(installer);
         }
         catch (Exception ex)
         {
             // Covers an interrupted download, a hash mismatch, and a refused launch.
-            UpdateStatus = $"Update failed: {ex.Message}";
+            UpdateStatus = Localizer.Instance.Format("Update.Failed", ex.Message);
         }
         finally
         {
@@ -403,6 +462,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void Apply(PlayerSnapshot s)
     {
+        // Kept so a language change can rebuild every derived string from the state
+        // the player is actually in, rather than guessing.
+        _lastSnapshot = s;
+
         _applyingSnapshot = true;
         try
         {
@@ -486,12 +549,12 @@ public sealed partial class MainViewModel : ObservableObject
 
     private static string DescribeStatus(PlayerSnapshot s) => s.Status switch
     {
-        PlaybackStatus.NoMedia => "Ready",
-        PlaybackStatus.Loading => "Loading…",
-        PlaybackStatus.Playing => "Playing",
-        PlaybackStatus.Paused => "Paused",
-        PlaybackStatus.Ended => "Ended",
-        PlaybackStatus.Faulted => $"Error: {s.FaultMessage}",
+        PlaybackStatus.NoMedia => Localizer.Instance["Status.Ready"],
+        PlaybackStatus.Loading => Localizer.Instance["Status.Loading"],
+        PlaybackStatus.Playing => Localizer.Instance["Status.Playing"],
+        PlaybackStatus.Paused => Localizer.Instance["Status.Paused"],
+        PlaybackStatus.Ended => Localizer.Instance["Status.Ended"],
+        PlaybackStatus.Faulted => Localizer.Instance.Format("Status.Error", s.FaultMessage ?? ""),
         _ => string.Empty
     };
 

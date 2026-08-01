@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Czech. Keys missing here fall back to Strings.resx. -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="App.OpenPrompt" xml:space="preserve"><value>Začněte otevřením videa</value></data>
+  <data name="Media.None" xml:space="preserve"><value>Nic není načteno</value></data>
+
+  <data name="Status.Ready" xml:space="preserve"><value>Připraveno</value></data>
+  <data name="Status.Loading" xml:space="preserve"><value>Načítání…</value></data>
+  <data name="Status.Playing" xml:space="preserve"><value>Přehrává se</value></data>
+  <data name="Status.Paused" xml:space="preserve"><value>Pozastaveno</value></data>
+  <data name="Status.Ended" xml:space="preserve"><value>Konec</value></data>
+  <data name="Status.Error" xml:space="preserve"><value>Chyba: {0}</value></data>
+
+  <data name="Button.Open" xml:space="preserve"><value>Otevřít</value></data>
+  <data name="Button.Recent" xml:space="preserve"><value>Nedávné</value></data>
+  <data name="Button.Play" xml:space="preserve"><value>Přehrát</value></data>
+  <data name="Button.Remove" xml:space="preserve"><value>Odebrat</value></data>
+  <data name="Button.Clear" xml:space="preserve"><value>Vyprázdnit</value></data>
+  <data name="Button.Install" xml:space="preserve"><value>Instalovat</value></data>
+
+  <data name="Playlist.Title" xml:space="preserve"><value>Seznam stop</value></data>
+
+  <data name="Repeat.Off" xml:space="preserve"><value>Opakování: vypnuto</value></data>
+  <data name="Repeat.One" xml:space="preserve"><value>Opakování: jedno</value></data>
+  <data name="Repeat.All" xml:space="preserve"><value>Opakování: vše</value></data>
+
+  <data name="Subtitles.Off" xml:space="preserve"><value>Titulky vypnuty</value></data>
+
+  <data name="Tooltip.Open" xml:space="preserve"><value>Otevřít soubory (Ctrl+O)</value></data>
+  <data name="Tooltip.Recent" xml:space="preserve"><value>Naposledy přehrané</value></data>
+  <data name="Tooltip.Previous" xml:space="preserve"><value>Předchozí (P)</value></data>
+  <data name="Tooltip.Next" xml:space="preserve"><value>Další (N)</value></data>
+  <data name="Tooltip.Stop" xml:space="preserve"><value>Zastavit (S)</value></data>
+  <data name="Tooltip.Mute" xml:space="preserve"><value>Ztlumit (M)</value></data>
+  <data name="Tooltip.Repeat" xml:space="preserve"><value>Přepnout opakování (R)</value></data>
+  <data name="Tooltip.Playlist" xml:space="preserve"><value>Zobrazit seznam stop (L)</value></data>
+  <data name="Tooltip.Rate" xml:space="preserve"><value>Rychlost přehrávání</value></data>
+  <data name="Tooltip.AudioTrack" xml:space="preserve"><value>Zvuková stopa</value></data>
+  <data name="Tooltip.Subtitles" xml:space="preserve"><value>Titulky</value></data>
+  <data name="Tooltip.LoadSubtitle" xml:space="preserve"><value>Načíst externí titulky</value></data>
+  <data name="Tooltip.Language" xml:space="preserve"><value>Jazyk</value></data>
+  <data name="Tooltip.DismissUpdate" xml:space="preserve"><value>Skrýt do příštího spuštění</value></data>
+
+  <data name="Update.Available" xml:space="preserve"><value>K dispozici je Luma {0}</value></data>
+  <data name="Update.Downloading" xml:space="preserve"><value>Stahování Luma {0}… {1}</value></data>
+  <data name="Update.Starting" xml:space="preserve"><value>Spouštění instalátoru…</value></data>
+  <data name="Update.Failed" xml:space="preserve"><value>Aktualizace selhala: {0}</value></data>
+
+  <data name="Picker.OpenVideo" xml:space="preserve"><value>Otevřít video</value></data>
+  <data name="Picker.VideoFiles" xml:space="preserve"><value>Video soubory</value></data>
+  <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Otevřít titulky</value></data>
+  <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Soubory titulků</value></data>
+
+  <data name="Language.System" xml:space="preserve"><value>Podle systému</value></data>
+</root>

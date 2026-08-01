@@ -1,17 +1,20 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Luma.Presentation.Localization;
 
 namespace Luma.Presentation.Services;
 
 /// <summary>Avalonia <see cref="IStorageProvider"/>-based implementation of <see cref="IFilePicker"/>.</summary>
 public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
 {
-    private static readonly FilePickerFileType VideoFiles = new("Video files")
+    // Built per call rather than cached in a static field: the label is localized, and
+    // a field initialised once would keep whatever language the app started in.
+    private static FilePickerFileType VideoFiles => new(Localizer.Instance["Picker.VideoFiles"])
     {
         Patterns = ["*.mp4", "*.mkv", "*.avi", "*.mov", "*.webm", "*.m4v", "*.flv", "*.wmv", "*.mpg", "*.mpeg", "*.ts"]
     };
 
-    private static readonly FilePickerFileType SubtitleFiles = new("Subtitle files")
+    private static FilePickerFileType SubtitleFiles => new(Localizer.Instance["Picker.SubtitleFiles"])
     {
         Patterns = ["*.srt", "*.ass", "*.ssa", "*.sub", "*.vtt", "*.idx"]
     };
@@ -20,7 +23,7 @@ public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open subtitle",
+            Title = Localizer.Instance["Picker.OpenSubtitle"],
             AllowMultiple = false,
             FileTypeFilter = [SubtitleFiles, FilePickerFileTypes.All]
         });
@@ -32,7 +35,7 @@ public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open video",
+            Title = Localizer.Instance["Picker.OpenVideo"],
             AllowMultiple = true,
             FileTypeFilter = [VideoFiles, FilePickerFileTypes.All]
         });

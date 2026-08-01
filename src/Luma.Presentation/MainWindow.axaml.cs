@@ -6,6 +6,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
+using Luma.Presentation.Localization;
 using Luma.Presentation.Services;
 using Luma.Presentation.ViewModels;
 
@@ -80,7 +81,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            vm.StatusText = $"Error: {ex.Message}";
+            vm.StatusText = Localizer.Instance.Format("Status.Error", ex.Message);
         }
     }
 

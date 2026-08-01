@@ -9,5 +9,6 @@
     <Project Path="tests/Luma.Application.Tests/Luma.Application.Tests.csproj" />
     <Project Path="tests/Luma.Domain.Tests/Luma.Domain.Tests.csproj" />
     <Project Path="tests/Luma.Infrastructure.Tests/Luma.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Luma.Presentation.Tests/Luma.Presentation.Tests.csproj" />
   </Folder>
 </Solution>
