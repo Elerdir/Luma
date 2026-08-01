@@ -1,8 +1,10 @@
 using Luma.Application;
 using Luma.Application.Abstractions;
 using Luma.Application.Preferences;
+using Luma.Application.Updates;
 using Luma.Infrastructure.Media;
 using Luma.Infrastructure.Settings;
+using Luma.Infrastructure.Updates;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Luma.Infrastructure;
@@ -27,6 +29,10 @@ public static class DependencyInjection
         // Open generic: each settings record gets its own JSON file, named after the type.
         services.AddSingleton(typeof(ISettingsStore<>), typeof(JsonSettingsStore<>));
         services.AddSingleton<PreferenceTracker>();
+
+        // Update settings live in the same place as everything else, so pointing Luma
+        // at an update server means editing UpdateOptions.json, not rebuilding.
+        services.AddSingleton<IUpdateService, UpdateHubUpdateService>();
 
         return services;
     }

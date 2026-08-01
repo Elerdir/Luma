@@ -32,10 +32,12 @@ public partial class App : Avalonia.Application
             var engine = provider.GetRequiredService<LibVlcMediaEngine>();
             var preferences = provider.GetRequiredService<PreferenceTracker>();
             var placementStore = provider.GetRequiredService<ISettingsStore<WindowPlacement>>();
+            var updates = provider.GetRequiredService<IUpdateService>();
 
             var window = new MainWindow();
             var picker = new StorageFilePicker(window);
-            var viewModel = new MainViewModel(player, picker, preferences);
+            var launcher = new ProcessInstallerLauncher(desktop);
+            var viewModel = new MainViewModel(player, picker, preferences, updates, launcher);
             window.DataContext = viewModel;
 
             desktop.MainWindow = window;
@@ -58,6 +60,11 @@ public partial class App : Avalonia.Application
 
                 if (startupFile is not null)
                     await player.OpenAsync(MediaSource.FromFile(startupFile));
+
+                // Deliberately last and deliberately not awaited into the startup path:
+                // an update check must never delay the window becoming usable, and it
+                // stays silent when no server is configured.
+                _ = viewModel.CheckForUpdatesAsync();
             };
 
             // PlayerService, the engine and the preference tracker are all IAsyncDisposable;

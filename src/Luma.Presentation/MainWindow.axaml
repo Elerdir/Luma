@@ -220,6 +220,28 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Update banner. Only present once the server has offered something,
+                     so a player with no update configured looks exactly as before. -->
+                <Border IsVisible="{Binding IsUpdateAvailable}"
+                        Background="#1B2430" BorderBrush="#2E4055" BorderThickness="1"
+                        CornerRadius="4" Padding="10,7">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock Grid.Column="0" Text="⬆" Foreground="#3FA9F5"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding UpdateBannerText}"
+                                   Foreground="#C7CBD2" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="2" Content="Install"
+                                Command="{Binding InstallUpdateCommand}"
+                                Margin="8,0,6,0" />
+                        <Button Grid.Column="3" Content="✕"
+                                Command="{Binding DismissUpdateCommand}"
+                                IsEnabled="{Binding !IsDownloadingUpdate}"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="Hide until next launch" />
+                    </Grid>
+                </Border>
+
                 <TextBlock Text="{Binding StatusText}" Foreground="#6C7280" FontSize="12" />
             </StackPanel>
         </Border>

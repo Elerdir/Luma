@@ -169,10 +169,38 @@ WiX 5 is MS-RL and needs no agreement.
 | `Ctrl`+`O` | Open file |
 | Double-click video | Fullscreen toggle |
 
+## Updates
+
+Luma can check an [UpdateHub](https://github.com/Elerdir/updatehub) server for new
+releases. It is **off until configured** — a fresh install never contacts anything.
+
+On first run Luma writes `UpdateOptions.json` next to its other settings. Point it at
+your server:
+
+```json
+{
+  "ServerUrl": "https://updates.example.com",
+  "AppSlug": "luma",
+  "Channel": "stable",
+  "Enabled": true
+}
+```
+
+On the next start, if the server offers a newer release for this platform, a banner
+appears above the status line. Installing downloads the artifact, verifies it against
+the SHA-256 the server reported, launches it and closes Luma so it can be replaced. A
+hash mismatch discards the download rather than running it.
+
+A failed check is silent by design: an unreachable, moved or misconfigured server must
+not interrupt someone watching a film.
+
+Register the app in UpdateHub with a slug matching `AppSlug`, then let the release
+workflow upload builds to it — see the [Releases](#releases) section above.
+
 ## Settings
 
-Preferences and window placement are written as one JSON file per settings type under
-the user's application data directory:
+Preferences, window placement and update options are written as one JSON file per
+settings type under the user's application data directory:
 
 | Platform | Location |
 |---|---|
