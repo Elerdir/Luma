@@ -4,6 +4,12 @@ namespace Luma.Domain.Tests.Media;
 
 public class MediaSourceTests
 {
+    // Built from the temp directory rather than a "C:\..." literal: on Linux that
+    // literal is not an absolute path, so it gets resolved against the working
+    // directory and DisplayName then returns the whole mangled string.
+    private static string PathTo(string name) =>
+        Path.Combine(Path.GetTempPath(), "luma", name);
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -16,7 +22,7 @@ public class MediaSourceTests
     [Fact]
     public void FromFile_produces_local_file_source_with_display_name()
     {
-        var source = MediaSource.FromFile(@"C:\videos\clip.mkv");
+        var source = MediaSource.FromFile(PathTo("clip.mkv"));
 
         source.IsLocalFile.ShouldBeTrue();
         source.DisplayName.ShouldBe("clip.mkv");
@@ -41,7 +47,7 @@ public class MediaSourceTests
     [Fact]
     public void Same_location_sources_are_equal()
     {
-        MediaSource.FromFile(@"C:\a\b.mp4")
-            .ShouldBe(MediaSource.FromFile(@"C:\a\b.mp4"));
+        MediaSource.FromFile(PathTo("b.mp4"))
+            .ShouldBe(MediaSource.FromFile(PathTo("b.mp4")));
     }
 }

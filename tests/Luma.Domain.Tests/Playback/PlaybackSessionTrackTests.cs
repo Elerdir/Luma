@@ -5,7 +5,11 @@ namespace Luma.Domain.Tests.Playback;
 
 public class PlaybackSessionTrackTests
 {
-    private static readonly MediaSource Sample = MediaSource.FromFile(@"C:\v\clip.mkv");
+    // Absolute on every platform; a "C:\..." literal is a relative path on Linux.
+    private static MediaSource FileNamed(string name) =>
+        MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "luma", name));
+
+    private static readonly MediaSource Sample = FileNamed("clip.mkv");
 
     private static readonly MediaTrack Cz = MediaTrack.Audio(0, "Czech");
     private static readonly MediaTrack En = MediaTrack.Audio(1, "English");
@@ -80,7 +84,7 @@ public class PlaybackSessionTrackTests
     public void Loading_new_media_clears_previous_tracks()
     {
         var s = Loaded();
-        s.BeginLoad(MediaSource.FromFile(@"C:\v\other.mkv"));
+        s.BeginLoad(FileNamed("other.mkv"));
 
         s.AudioTracks.ShouldBeEmpty();
         s.SubtitleTracks.ShouldBeEmpty();
