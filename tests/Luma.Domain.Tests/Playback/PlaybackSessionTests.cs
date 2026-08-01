@@ -5,7 +5,9 @@ namespace Luma.Domain.Tests.Playback;
 
 public class PlaybackSessionTests
 {
-    private static readonly MediaSource Sample = MediaSource.FromFile(@"C:\v\clip.mp4");
+    // Absolute on every platform; a "C:\..." literal is a relative path on Linux.
+    private static readonly MediaSource Sample =
+        MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "luma", "clip.mp4"));
     private static readonly TimeSpan Length = TimeSpan.FromMinutes(2);
 
     private static PlaybackSession Playing()

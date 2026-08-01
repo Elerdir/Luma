@@ -5,7 +5,9 @@ namespace Luma.Domain.Tests.Playlists;
 
 public class PlaylistTests
 {
-    private static MediaSource File(string name) => MediaSource.FromFile($@"C:\v\{name}.mp4");
+    // Absolute on every platform; a "C:\..." literal is a relative path on Linux.
+    private static MediaSource File(string name) =>
+        MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "luma", $"{name}.mp4"));
 
     private static Playlist WithThree()
     {

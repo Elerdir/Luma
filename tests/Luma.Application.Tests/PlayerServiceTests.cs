@@ -8,7 +8,11 @@ namespace Luma.Application.Tests;
 
 public class PlayerServiceTests
 {
-    private static MediaSource File(string name) => MediaSource.FromFile($@"C:\v\{name}.mp4");
+    // Built from the temp directory rather than a "C:\..." literal: on Linux that
+    // literal is not an absolute path, so it gets resolved against the working
+    // directory and DisplayName then returns the whole mangled string.
+    private static MediaSource File(string name) =>
+        MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "luma", $"{name}.mp4"));
     private static readonly TimeSpan Len = TimeSpan.FromMinutes(3);
 
     private static (PlayerService player, FakeMediaEngine engine) Create()
