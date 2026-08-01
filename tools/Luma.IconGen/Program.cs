@@ -21,3 +21,9 @@ Console.WriteLine($"{icoPath}  ({icoSizes.Length} frames)");
 var pngPath = Path.Combine(assets, "luma.png");
 File.WriteAllBytes(pngPath, frames.Single(f => f.Size == 256).Png);
 Console.WriteLine($"{pngPath}");
+
+// macOS .icns needs sizes up to 1024. The release workflow downscales this one with
+// sips rather than upscaling the 256px file, which would come out soft.
+var largePath = Path.Combine(assets, "luma-1024.png");
+File.WriteAllBytes(largePath, ImageWriter.EncodePng(IconRenderer.Render(1024), 1024, 1024));
+Console.WriteLine($"{largePath}");

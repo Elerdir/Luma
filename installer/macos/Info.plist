@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Bundle metadata for Luma.app. VERSION is substituted by the release workflow.
+
+  LSMinimumSystemVersion tracks what .NET 10 supports on macOS.
+  NSHighResolutionCapable keeps the video surface sharp on Retina displays.
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Luma</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Luma</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.elerdir.luma</string>
+
+    <key>CFBundleVersion</key>
+    <string>VERSION</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>VERSION</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleExecutable</key>
+    <string>Luma</string>
+
+    <key>CFBundleIconFile</key>
+    <string>luma.icns</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.video</string>
+
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Video</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.movie</string>
+                <string>public.video</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

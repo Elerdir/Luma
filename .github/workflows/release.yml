@@ -1,0 +1,224 @@
+name: Release
+
+# Builds installers for Windows and macOS.
+#
+#   - Publishing a GitHub release builds both, attaches them to that release and
+#     uploads them to UpdateHub.
+#   - Running it by hand builds both and leaves them as workflow artifacts, so the
+#     packaging can be exercised without cutting a release.
+#
+# UpdateHub upload is skipped unless UPDATEHUB_URL and UPDATEHUB_CI_TOKEN are set,
+# so the workflow is useful before the update server is configured.
+#
+# Required secrets (optional — upload is skipped without them):
+#   UPDATEHUB_URL       e.g. https://updates.example.com
+#   UPDATEHUB_CI_TOKEN  CI or personal access token
+# Optional repo variable:
+#   APP_SLUG            defaults to "luma"
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # Resolve the version once so both platforms package the same number.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # Strip a leading "v" from the tag: v1.2.0 -> 1.2.0
+            raw='${{ github.event.release.tag_name }}'
+            echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Pinned to 5.x: from v6 onwards WiX requires accepting the Open Source
+      # Maintenance Fee EULA. Keep in step with instalator.bat.
+      - name: Install WiX
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build MSI
+        shell: cmd
+        run: instalator.bat %VERSION%
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luma-windows-x64
+          path: dist/*.msi
+          if-no-files-found: error
+
+  macos:
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # macos-latest is Apple silicon; osx-arm64 is what its users need. Add a matrix
+      # here (and a matching VLC_DMG below) if you also want an Intel build.
+      - name: Publish osx-arm64
+        run: |
+          dotnet publish src/Luma.Presentation/Luma.Presentation.csproj \
+            --configuration Release \
+            --runtime osx-arm64 \
+            --self-contained true \
+            -p:Version="$VERSION" \
+            --output artifacts/publish/osx-arm64
+
+      # The VideoLAN.LibVLC.Mac NuGet package is not usable here: it contains one x64
+      # libvlc.dylib and no plugin directory, so it neither loads on Apple silicon nor
+      # decodes anything. Take the real thing out of the official VLC release, which
+      # ships arm64 binaries and the full plugin set.
+      - name: Fetch libvlc from the official VLC release
+        env:
+          VLC_VERSION: '3.0.21'
+        run: |
+          curl -fsSL -o vlc.dmg \
+            "https://get.videolan.org/vlc/${VLC_VERSION}/macosx/vlc-${VLC_VERSION}-arm64.dmg"
+
+          hdiutil attach vlc.dmg -mountpoint /Volumes/VLC-luma -nobrowse -quiet
+          mkdir -p build/libvlc
+          cp -R /Volumes/VLC-luma/VLC.app/Contents/MacOS/lib     build/libvlc/lib
+          cp -R /Volumes/VLC-luma/VLC.app/Contents/MacOS/plugins build/libvlc/plugins
+          hdiutil detach /Volumes/VLC-luma -quiet
+
+          echo "dylibs:  $(find build/libvlc/lib -name '*.dylib' | wc -l)"
+          echo "plugins: $(find build/libvlc/plugins -name '*.dylib' | wc -l)"
+          test -f build/libvlc/lib/libvlc.dylib
+
+      - name: Build the icon
+        run: |
+          # Downscale from the 1024px source rather than upscaling the 256px one.
+          mkdir -p build/luma.iconset
+          src=src/Luma.Presentation/Assets/luma-1024.png
+          for size in 16 32 128 256 512; do
+            sips -z $size $size "$src" --out "build/luma.iconset/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z $double $double "$src" --out "build/luma.iconset/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns build/luma.iconset -o build/luma.icns
+
+      - name: Assemble Luma.app
+        run: |
+          APP=build/Luma.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+          cp -R artifacts/publish/osx-arm64/. "$APP/Contents/MacOS/"
+
+          # LibVLCSharp looks for libvlc next to the executable, and libvlc looks for
+          # its plugins in ./plugins relative to itself. Flattening both into MacOS/
+          # is the layout that satisfies the pair.
+          cp build/libvlc/lib/*.dylib "$APP/Contents/MacOS/"
+          cp -R build/libvlc/plugins  "$APP/Contents/MacOS/plugins"
+
+          cp build/luma.icns "$APP/Contents/Resources/luma.icns"
+          sed "s/VERSION/$VERSION/g" installer/macos/Info.plist > "$APP/Contents/Info.plist"
+
+          chmod +x "$APP/Contents/MacOS/Luma"
+
+          # Ad-hoc signature. Without any signature at all Gatekeeper refuses to run
+          # the bundle outright; with it, users get the usual "unidentified developer"
+          # prompt they can override. Proper notarisation needs a paid Apple
+          # Developer account — see the README.
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --verbose "$APP"
+
+      - name: Build the DMG
+        run: |
+          mkdir -p build/dmg
+          cp -R build/Luma.app build/dmg/
+          ln -s /Applications build/dmg/Applications
+          mkdir -p dist
+          hdiutil create \
+            -volname "Luma $VERSION" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            "dist/Luma-$VERSION-arm64.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luma-macos-arm64
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  publish:
+    # Only when an actual release was published; manual runs stop at the artifacts.
+    if: github.event_name == 'release'
+    needs: [version, windows, macos]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      APP_SLUG: ${{ vars.APP_SLUG || 'luma' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Attach installers to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload to UpdateHub
+        env:
+          UPDATEHUB_URL: ${{ secrets.UPDATEHUB_URL }}
+          UPDATEHUB_CI_TOKEN: ${{ secrets.UPDATEHUB_CI_TOKEN }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+        run: |
+          if [ -z "$UPDATEHUB_URL" ] || [ -z "$UPDATEHUB_CI_TOKEN" ]; then
+            echo "UPDATEHUB_URL / UPDATEHUB_CI_TOKEN not set — skipping upload."
+            exit 0
+          fi
+
+          upload() {
+            local file="$1" platform="$2" arch="$3"
+            echo "Uploading $(basename "$file") ($platform/$arch)"
+            curl -f -X POST "$UPDATEHUB_URL/api/ci/apps/$APP_SLUG/releases" \
+              -H "X-UpdateHub-Token: $UPDATEHUB_CI_TOKEN" \
+              -F "file=@$file" \
+              -F "version=$VERSION" \
+              -F "platform=$platform" \
+              -F "arch=$arch" \
+              -F "channel=stable" \
+              -F "release_notes=$RELEASE_NOTES"
+          }
+
+          for f in dist/*.msi; do [ -e "$f" ] && upload "$f" windows x64; done
+          for f in dist/*.dmg; do [ -e "$f" ] && upload "$f" macos arm64; done
+
+          echo "Uploaded as a draft — publish it in the UpdateHub admin UI."
