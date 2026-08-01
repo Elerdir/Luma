@@ -162,6 +162,49 @@ public class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Muting_sends_silence_to_the_engine_but_reports_the_chosen_level()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len);
+        player.SetVolume(Volume.Of(70));
+
+        player.ToggleMute();
+
+        engine.LastVolume!.Value.ShouldBe(Volume.Muted);
+        player.Snapshot.IsMuted.ShouldBeTrue();
+        player.Snapshot.Volume.Level.ShouldBe(70);
+    }
+
+    [Fact]
+    public async Task Unmuting_restores_the_level_on_the_engine()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len);
+        player.SetVolume(Volume.Of(70));
+        player.SetMuted(true);
+
+        player.SetMuted(false);
+
+        engine.LastVolume!.Value.Level.ShouldBe(70);
+        player.Snapshot.IsMuted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Mute_is_reapplied_when_the_next_media_opens()
+    {
+        var (player, engine) = Create();
+        player.SetVolume(Volume.Of(55));
+        player.SetMuted(true);
+
+        await player.OpenAsync(File("a"));
+        engine.RaiseOpened(Len);
+
+        engine.LastVolume!.Value.ShouldBe(Volume.Muted);
+    }
+
+    [Fact]
     public async Task Stop_unloads_and_forwards_to_engine()
     {
         var (player, engine) = Create();

@@ -28,6 +28,11 @@ public interface IPlayer
     void Stop();
     void SeekTo(TimeSpan position);
     void SetVolume(Volume volume);
+
+    /// <summary>Silence or restore output without discarding the chosen volume.</summary>
+    void SetMuted(bool muted);
+
+    void ToggleMute();
     void SetRate(PlaybackRate rate);
     void SetRepeat(RepeatMode mode);
 

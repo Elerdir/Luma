@@ -113,7 +113,11 @@
 
                     <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="🔊" VerticalAlignment="Center" />
+                        <Button Content="{Binding VolumeGlyph}"
+                                Command="{Binding ToggleMuteCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="4,2" VerticalAlignment="Center"
+                                ToolTip.Tip="Mute (M)" />
                         <Slider Minimum="0" Maximum="100"
                                 Value="{Binding Volume, Mode=TwoWay}"
                                 Width="120" VerticalAlignment="Center" />

@@ -141,7 +141,31 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         lock (_gate)
         {
             _session.ChangeVolume(volume);
-            _engine.SetVolume(volume);
+            _engine.SetVolume(_session.EffectiveVolume);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
+    public void SetMuted(bool muted)
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _session.SetMuted(muted);
+            _engine.SetVolume(_session.EffectiveVolume);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
+    public void ToggleMute()
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _session.ToggleMute();
+            _engine.SetVolume(_session.EffectiveVolume);
             snapshot = BuildSnapshot();
         }
         Publish(snapshot);
@@ -231,7 +255,7 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
                 return; // stale event
             _session.CompleteLoad(e.Duration, autoPlay: true);
             _session.SetAvailableTracks(e.Tracks);
-            _engine.SetVolume(_session.Volume);
+            _engine.SetVolume(_session.EffectiveVolume);
             _engine.SetRate(_session.Rate);
 
             // Push the session's default selection (first audio, subtitles off) to the engine.
@@ -314,6 +338,7 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         _session.Position,
         _session.Duration,
         _session.Volume,
+        _session.IsMuted,
         _session.Rate,
         _session.FaultMessage,
         _playlist.Count,

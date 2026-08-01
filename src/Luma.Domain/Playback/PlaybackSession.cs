@@ -14,7 +14,15 @@ public sealed class PlaybackSession
     public MediaSource? Source { get; private set; }
     public TimeSpan Position { get; private set; } = TimeSpan.Zero;
     public TimeSpan Duration { get; private set; } = TimeSpan.Zero;
+    /// <summary>The level the user chose. Preserved across muting.</summary>
     public Volume Volume { get; private set; } = Volume.Default;
+
+    /// <summary>Output is silenced without discarding <see cref="Volume"/>.</summary>
+    public bool IsMuted { get; private set; }
+
+    /// <summary>What the backend should actually be set to.</summary>
+    public Volume EffectiveVolume => IsMuted ? Volume.Muted : Volume;
+
     public PlaybackRate Rate { get; private set; } = PlaybackRate.Normal;
     public string? FaultMessage { get; private set; }
 
@@ -202,8 +210,22 @@ public sealed class PlaybackSession
         Status = PlaybackStatus.Faulted;
     }
 
-    /// <summary>Change volume. Legal from any state.</summary>
-    public void ChangeVolume(Volume volume) => Volume = volume;
+    /// <summary>
+    /// Change volume. Legal from any state. Choosing an audible level also lifts
+    /// muting — reaching for the slider is how users expect to un-mute.
+    /// </summary>
+    public void ChangeVolume(Volume volume)
+    {
+        Volume = volume;
+        if (!volume.IsMuted)
+            IsMuted = false;
+    }
+
+    /// <summary>Silence or restore output, keeping <see cref="Volume"/> intact.</summary>
+    public void SetMuted(bool muted) => IsMuted = muted;
+
+    /// <summary>Flip between silenced and audible.</summary>
+    public void ToggleMute() => IsMuted = !IsMuted;
 
     /// <summary>Change playback speed. Legal from any state.</summary>
     public void ChangeRate(PlaybackRate rate) => Rate = rate;

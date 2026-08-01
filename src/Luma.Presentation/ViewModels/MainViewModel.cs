@@ -39,6 +39,11 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _positionText = "00:00";
     [ObservableProperty] private string _durationText = "00:00";
     [ObservableProperty] private int _volume = 80;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VolumeGlyph))]
+    private bool _isMuted;
+
     [ObservableProperty] private MediaTrack? _selectedAudioTrack;
     [ObservableProperty] private MediaTrack? _selectedSubtitle;
 
@@ -57,6 +62,8 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     public string PlayPauseGlyph => IsPlaying ? "❚❚" : "▶";
+
+    public string VolumeGlyph => IsMuted ? "🔇" : "🔊";
 
     [RelayCommand]
     private async Task OpenAsync()
@@ -119,20 +126,7 @@ public sealed partial class MainViewModel : ObservableObject
     private void VolumeDown() => Volume = Math.Max(0, Volume - 5);
 
     [RelayCommand]
-    private void ToggleMute()
-    {
-        if (Volume > 0)
-        {
-            _volumeBeforeMute = Volume;
-            Volume = 0;
-        }
-        else
-        {
-            Volume = _volumeBeforeMute > 0 ? _volumeBeforeMute : 50;
-        }
-    }
-
-    private int _volumeBeforeMute = 80;
+    private void ToggleMute() => _player.ToggleMute();
 
     private void SeekBy(TimeSpan delta)
     {
@@ -190,6 +184,7 @@ public sealed partial class MainViewModel : ObservableObject
             PositionText = Format(s.Position);
             DurationText = Format(s.Duration);
             Volume = s.Volume.Level;
+            IsMuted = s.IsMuted;
             StatusText = DescribeStatus(s);
             SyncTracks(s);
         }
