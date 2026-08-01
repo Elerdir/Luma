@@ -15,6 +15,13 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <!--
+    Strings.resx and Strings.<culture>.resx under Localization\ are picked up by the
+    SDK's default EmbeddedResource glob; each culture becomes a satellite assembly.
+    They are read through ResourceManager by name, so there is no generated designer
+    class and translations build the same from the CLI as from an IDE.
+  -->
+
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />

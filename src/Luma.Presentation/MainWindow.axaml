@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
         xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
+        xmlns:loc="clr-namespace:Luma.Presentation.Localization"
         mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="600"
         x:Class="Luma.Presentation.MainWindow"
         x:DataType="vm:MainViewModel"
@@ -64,7 +65,7 @@
                         </Panel>
                         <TextBlock Text="Luma" FontSize="30" FontWeight="Light"
                                    Foreground="#E8EAED" HorizontalAlignment="Center" />
-                        <TextBlock Text="Open a video to begin"
+                        <TextBlock Text="{loc:Localize App.OpenPrompt}"
                                    Foreground="#7A7F8A" FontSize="13" HorizontalAlignment="Center" />
                     </StackPanel>
 
@@ -86,7 +87,7 @@
                 BorderBrush="#22252E" BorderThickness="1,0,0,0">
             <Grid RowDefinitions="Auto,*,Auto">
 
-                <TextBlock Grid.Row="0" Text="Playlist" Foreground="#C7CBD2"
+                <TextBlock Grid.Row="0" Text="{loc:Localize Playlist.Title}" Foreground="#C7CBD2"
                            FontSize="13" Margin="12,10,12,8" />
 
                 <ListBox Grid.Row="1"
@@ -110,9 +111,9 @@
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6"
                             Margin="12,8,12,10">
-                    <Button Content="Play" Command="{Binding PlaySelectedCommand}" />
-                    <Button Content="Remove" Command="{Binding RemoveSelectedCommand}" />
-                    <Button Content="Clear" Command="{Binding ClearPlaylistCommand}" />
+                    <Button Content="{loc:Localize Button.Play}" Command="{Binding PlaySelectedCommand}" />
+                    <Button Content="{loc:Localize Button.Remove}" Command="{Binding RemoveSelectedCommand}" />
+                    <Button Content="{loc:Localize Button.Clear}" Command="{Binding ClearPlaylistCommand}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -146,10 +147,10 @@
                 <WrapPanel Orientation="Horizontal">
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 VerticalAlignment="Center" Margin="0,0,14,4">
-                        <Button Content="Open" Command="{Binding OpenCommand}"
-                                ToolTip.Tip="Open files (Ctrl+O)" />
-                        <Button Content="Recent" IsEnabled="{Binding HasRecentFiles}"
-                                ToolTip.Tip="Recently played">
+                        <Button Content="{loc:Localize Button.Open}" Command="{Binding OpenCommand}"
+                                ToolTip.Tip="{loc:Localize Tooltip.Open}" />
+                        <Button Content="{loc:Localize Button.Recent}" IsEnabled="{Binding HasRecentFiles}"
+                                ToolTip.Tip="{loc:Localize Tooltip.Recent}">
                             <Button.Flyout>
                                 <MenuFlyout ItemsSource="{Binding RecentFiles}">
                                     <MenuFlyout.ItemContainerTheme>
@@ -167,13 +168,13 @@
                             </Button.Flyout>
                         </Button>
                         <Button Content="⏮" Command="{Binding PreviousCommand}"
-                                ToolTip.Tip="Previous (P)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Previous}" />
                         <Button Content="{Binding PlayPauseGlyph}"
                                 Command="{Binding PlayPauseCommand}" Width="52" />
                         <Button Content="⏭" Command="{Binding NextCommand}"
-                                ToolTip.Tip="Next (N)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Next}" />
                         <Button Content="■" Command="{Binding StopCommand}"
-                                ToolTip.Tip="Stop (S)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Stop}" />
                     </StackPanel>
 
                     <!-- The file name is not repeated here: it is the window title. -->
@@ -181,13 +182,26 @@
                                 VerticalAlignment="Center" Margin="0,0,14,4">
                         <Button Content="{Binding RepeatLabel}"
                                 Command="{Binding CycleRepeatCommand}"
-                                ToolTip.Tip="Cycle repeat mode (R)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Repeat}" />
                         <Button Content="☰" Command="{Binding TogglePlaylistCommand}"
-                                ToolTip.Tip="Toggle playlist (L)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Playlist}" />
+
+                        <!-- Language names are shown in their own language, so this
+                             stays usable no matter what the UI is currently set to. -->
+                        <ComboBox ItemsSource="{Binding Languages}"
+                                  SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                  MinWidth="104"
+                                  ToolTip.Tip="{loc:Localize Tooltip.Language}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="loc:LanguageOption">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
 
                         <ComboBox ItemsSource="{Binding RateOptions}"
                                   SelectedItem="{Binding SelectedRate, Mode=TwoWay}"
-                                  MinWidth="76" ToolTip.Tip="Playback speed">
+                                  MinWidth="76" ToolTip.Tip="{loc:Localize Tooltip.Rate}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="x:Double">
                                     <TextBlock Text="{Binding StringFormat='{}{0}x'}" />
@@ -199,15 +213,15 @@
                                   IsVisible="{Binding HasMedia}"
                                   SelectedItem="{Binding SelectedAudioTrack, Mode=TwoWay}"
                                   MinWidth="110" MaxWidth="160"
-                                  ToolTip.Tip="Audio track" />
+                                  ToolTip.Tip="{loc:Localize Tooltip.AudioTrack}" />
                         <ComboBox ItemsSource="{Binding SubtitleOptions}"
                                   IsVisible="{Binding HasMedia}"
                                   SelectedItem="{Binding SelectedSubtitle, Mode=TwoWay}"
                                   MinWidth="110" MaxWidth="160"
-                                  ToolTip.Tip="Subtitles" />
+                                  ToolTip.Tip="{loc:Localize Tooltip.Subtitles}" />
                         <Button Content="＋" Command="{Binding LoadSubtitleCommand}"
                                 IsVisible="{Binding HasMedia}"
-                                ToolTip.Tip="Load an external subtitle file" />
+                                ToolTip.Tip="{loc:Localize Tooltip.LoadSubtitle}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"
@@ -216,7 +230,7 @@
                                 Command="{Binding ToggleMuteCommand}"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="4,2" VerticalAlignment="Center"
-                                ToolTip.Tip="Mute (M)" />
+                                ToolTip.Tip="{loc:Localize Tooltip.Mute}" />
                         <!-- Allowed to shrink so the volume group is the last thing
                              that would ever need a line of its own. -->
                         <Slider Minimum="0" Maximum="100"
@@ -236,14 +250,14 @@
                         <TextBlock Grid.Column="1" Text="{Binding UpdateBannerText}"
                                    Foreground="#C7CBD2" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="2" Content="Install"
+                        <Button Grid.Column="2" Content="{loc:Localize Button.Install}"
                                 Command="{Binding InstallUpdateCommand}"
                                 Margin="8,0,6,0" />
                         <Button Grid.Column="3" Content="✕"
                                 Command="{Binding DismissUpdateCommand}"
                                 IsEnabled="{Binding !IsDownloadingUpdate}"
                                 Background="Transparent" BorderThickness="0"
-                                ToolTip.Tip="Hide until next launch" />
+                                ToolTip.Tip="{loc:Localize Tooltip.DismissUpdate}" />
                     </Grid>
                 </Border>
 
