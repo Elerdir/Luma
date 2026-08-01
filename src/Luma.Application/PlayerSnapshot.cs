@@ -10,6 +10,7 @@ namespace Luma.Application;
 /// </summary>
 public sealed record PlayerSnapshot(
     PlaybackStatus Status,
+    MediaSource? Source,
     string? MediaName,
     TimeSpan Position,
     TimeSpan Duration,

@@ -142,6 +142,24 @@
                                 VerticalAlignment="Center">
                         <Button Content="Open" Command="{Binding OpenCommand}"
                                 ToolTip.Tip="Open files (Ctrl+O)" />
+                        <Button Content="Recent" IsEnabled="{Binding HasRecentFiles}"
+                                ToolTip.Tip="Recently played">
+                            <Button.Flyout>
+                                <MenuFlyout ItemsSource="{Binding RecentFiles}">
+                                    <MenuFlyout.ItemContainerTheme>
+                                        <ControlTheme TargetType="MenuItem"
+                                                      BasedOn="{StaticResource {x:Type MenuItem}}"
+                                                      x:DataType="vm:RecentFileViewModel">
+                                            <Setter Property="Header" Value="{Binding Name}" />
+                                            <Setter Property="ToolTip.Tip" Value="{Binding FullPath}" />
+                                            <Setter Property="Command"
+                                                    Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenRecentCommand}" />
+                                            <Setter Property="CommandParameter" Value="{Binding}" />
+                                        </ControlTheme>
+                                    </MenuFlyout.ItemContainerTheme>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
                         <Button Content="⏮" Command="{Binding PreviousCommand}"
                                 ToolTip.Tip="Previous (P)" />
                         <Button Content="{Binding PlayPauseGlyph}"
