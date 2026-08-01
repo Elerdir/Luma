@@ -13,6 +13,7 @@ public sealed record PlayerSnapshot(
     TimeSpan Position,
     TimeSpan Duration,
     Volume Volume,
+    bool IsMuted,
     PlaybackRate Rate,
     string? FaultMessage,
     int PlaylistCount,
