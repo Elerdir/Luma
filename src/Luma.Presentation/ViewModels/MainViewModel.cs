@@ -20,9 +20,17 @@ public sealed partial class MainViewModel : ObservableObject
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
 
-    [ObservableProperty] private string _mediaName = "No media loaded";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WindowTitle))]
+    private string _mediaName = NoMediaName;
+
+    private const string NoMediaName = "No media loaded";
+
     [ObservableProperty] private string _statusText = "Ready";
-    [ObservableProperty] private bool _hasMedia;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WindowTitle))]
+    private bool _hasMedia;
+
     [ObservableProperty] private bool _isPlaying;
 
     // Mirrors the domain's transition rules. Bound to IsEnabled/CanExecute so a click
@@ -109,6 +117,9 @@ public sealed partial class MainViewModel : ObservableObject
     public string PlayPauseGlyph => IsPlaying ? "❚❚" : "▶";
 
     public string VolumeGlyph => IsMuted ? "🔇" : "🔊";
+
+    /// <summary>Window caption: the file being played, falling back to the app name.</summary>
+    public string WindowTitle => HasMedia ? $"{MediaName} — Luma" : "Luma";
 
     [RelayCommand]
     private async Task OpenAsync()
@@ -312,7 +323,7 @@ public sealed partial class MainViewModel : ObservableObject
             CanPlayPause = s.CanTogglePlayPause;
             CanSeek = s.CanSeek;
             CanStop = s.CanStop;
-            MediaName = s.MediaName ?? "No media loaded";
+            MediaName = s.MediaName ?? NoMediaName;
             DurationSeconds = s.Duration.TotalSeconds;
             PositionSeconds = s.Position.TotalSeconds;
             PositionText = Format(s.Position);
