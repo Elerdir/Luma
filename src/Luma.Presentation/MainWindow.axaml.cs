@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform.Storage;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
 using Luma.Presentation.ViewModels;
@@ -14,6 +15,61 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DropEvent, OnDrop);
+
+        // The video overlay lives in VideoView's own floating window, so routed events
+        // raised there never reach this one — it needs the handlers of its own.
+        var overlay = this.FindControl<Panel>("VideoOverlay");
+        if (overlay is not null)
+        {
+            DragDrop.SetAllowDrop(overlay, true);
+            overlay.AddHandler(DragDrop.DragOverEvent, OnDragOver);
+            overlay.AddHandler(DragDrop.DropEvent, OnDrop);
+        }
+    }
+
+    private static void OnDragOver(object? sender, DragEventArgs e)
+    {
+        // Holding Shift appends to the playlist instead of replacing it — the same
+        // modifier convention as the file managers dragging the files in.
+        var hasFiles = e.DataTransfer.Contains(DataFormat.File);
+        e.DragEffects = hasFiles
+            ? e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? DragDropEffects.Link : DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        e.Handled = true;
+
+        if (DataContext is not MainViewModel vm)
+            return;
+
+        // An async void handler has nowhere to propagate, so nothing may escape it.
+        try
+        {
+            var paths = e.DataTransfer.TryGetFiles()?
+                .OfType<IStorageFile>()
+                .Select(f => f.TryGetLocalPath())
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Select(p => p!)
+                .ToArray() ?? [];
+
+            if (paths.Length == 0)
+                return;
+
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                await vm.EnqueuePathsAsync(paths);
+            else
+                await vm.OpenPathsAsync(paths);
+        }
+        catch (Exception ex)
+        {
+            vm.StatusText = $"Error: {ex.Message}";
+        }
     }
 
     /// <summary>Wire the concrete LibVLC player into the video surface (composition-root concern).</summary>
