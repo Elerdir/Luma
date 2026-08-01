@@ -25,6 +25,14 @@ public sealed record PlayerSnapshot(
     public bool HasMedia => Status is not PlaybackStatus.NoMedia;
     public bool IsPlaying => Status is PlaybackStatus.Playing;
 
+    // Command availability, mirroring the domain's transition rules so the UI can
+    // disable controls that would otherwise throw.
+    public bool CanPlay => Status.CanPlay();
+    public bool CanPause => Status.CanPause();
+    public bool CanTogglePlayPause => Status.CanTogglePlayPause();
+    public bool CanSeek => Status.CanSeek();
+    public bool CanStop => Status.CanStop();
+
     /// <summary>Progress in the range [0, 1]; 0 when the duration is unknown.</summary>
     public double Progress =>
         Duration > TimeSpan.Zero

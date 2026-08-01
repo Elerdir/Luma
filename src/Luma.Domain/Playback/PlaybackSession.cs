@@ -33,6 +33,15 @@ public sealed class PlaybackSession
     public bool HasMedia => Status is not PlaybackStatus.NoMedia;
     public bool IsPlaying => Status is PlaybackStatus.Playing;
 
+    // Which commands the current state admits. Callers must consult these instead of
+    // HasMedia: Loading and Faulted both count as "has media" but accept neither
+    // playback nor seeking.
+    public bool CanPlay => Status.CanPlay();
+    public bool CanPause => Status.CanPause();
+    public bool CanTogglePlayPause => Status.CanTogglePlayPause();
+    public bool CanSeek => Status.CanSeek();
+    public bool CanStop => Status.CanStop();
+
     /// <summary>Begin opening a new source. Legal from any state.</summary>
     public void BeginLoad(MediaSource source)
     {
