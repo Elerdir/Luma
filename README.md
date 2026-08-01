@@ -1,5 +1,7 @@
 # Luma
 
+[![CI](https://github.com/Elerdir/Luma/actions/workflows/ci.yml/badge.svg)](https://github.com/Elerdir/Luma/actions/workflows/ci.yml)
+
 A clean, cross-platform video player inspired by MPC-HC. Built with **.NET 10**, **Avalonia**, and **LibVLCSharp**, following Clean Architecture and SOLID principles, with a fully tested domain core.
 
 > *luma* — the luminance (brightness) component of a video signal (the **Y** in YCbCr).
@@ -16,11 +18,28 @@ Luma.Infrastructure (LibVLC adapter) ─┼─► Luma.Application (use-cases, p
 | Project | Responsibility |
 |---|---|
 | `Luma.Domain` | Playback state machine, playlist, value objects. Pure C#, no dependencies. |
-| `Luma.Application` | Use-cases and the `IMediaEngine` port. Depends only on Domain. |
-| `Luma.Infrastructure` | `LibVlcMediaEngine` — implements `IMediaEngine`, maps VLC events to domain. |
+| `Luma.Application` | Use-cases and the `IMediaEngine`, `ISubtitleFinder` and `ISettingsStore<T>` ports. Depends only on Domain. |
+| `Luma.Infrastructure` | `LibVlcMediaEngine`, sidecar subtitle discovery, JSON settings. Implements the ports. |
 | `Luma.Presentation` | Avalonia UI (MVVM), dependency-injection composition root. |
 
 The **`IMediaEngine`** port is the seam: the whole app is testable against a fake engine, and the VLC backend can later be swapped for FFmpeg without touching the domain.
+
+The domain also owns what is *legal*. `PlaybackSession` throws on an illegal transition,
+and `PlaybackStatusExtensions` exposes the matching predicates (`CanPlay`, `CanSeek`, …)
+that the UI binds its `IsEnabled` and `CanExecute` to — so a button or shortcut can never
+reach the aggregate in a state it would reject. A test cross-checks the two against each
+other for every status.
+
+## Features
+
+- Play local files and network streams; playlist with repeat off / one / all
+- Seek, volume, mute, playback speed 0.25× – 4×
+- Audio and subtitle track selection, plus external subtitle files
+- Sidecar subtitles found automatically (`movie.srt`, `movie.en.srt`, `Subs/…`)
+- Fullscreen with auto-hiding controls and cursor
+- Drag and drop files onto the window (hold <kbd>Shift</kbd> to append)
+- Remembers volume, mute, repeat, window size and recent files — and resumes each file
+  where you left it
 
 ## Tech stack
 
@@ -30,12 +49,38 @@ The **`IMediaEngine`** port is the seam: the whole app is testable against a fak
 - Central Package Management (`Directory.Packages.props`)
 - xUnit · Shouldly · NSubstitute (tests)
 
+## Platform support
+
+The UI is cross-platform, but the **native LibVLC libraries are only bundled for
+Windows** (`VideoLAN.LibVLC.Windows`). On Linux and macOS libvlc has to be installed
+system-wide before Luma will start:
+
+```bash
+sudo apt install libvlc-dev vlc-plugin-base
+```
+
+```bash
+brew install --cask vlc
+```
+
 ## Build & run
 
 ```bash
 dotnet build
+```
+
+```bash
 dotnet run --project src/Luma.Presentation
+```
+
+```bash
 dotnet test
+```
+
+Integration tests load the native libraries, so headless CI excludes them:
+
+```bash
+dotnet test --filter "Category!=Integration"
 ```
 
 Open a file directly (file association / CLI):
@@ -54,10 +99,26 @@ dotnet run --project src/Luma.Presentation -- "C:\videos\clip.mkv"
 | `↑` / `↓` | Volume ±5 |
 | `M` | Mute toggle |
 | `S` | Stop |
+| `N` / `P` | Next / previous playlist item |
+| `R` | Cycle repeat mode |
+| `L` | Toggle playlist panel |
 | `F` / `F11` | Fullscreen toggle |
 | `Esc` | Exit fullscreen |
 | `Ctrl`+`O` | Open file |
 | Double-click video | Fullscreen toggle |
+
+## Settings
+
+Preferences and window placement are written as one JSON file per settings type under
+the user's application data directory:
+
+| Platform | Location |
+|---|---|
+| Windows | `%APPDATA%\Luma\` |
+| Linux / macOS | `~/.config/Luma/` |
+
+Deleting them resets Luma to a fresh install. A missing or corrupt file falls back to
+defaults rather than blocking startup.
 
 ## Icons
 
@@ -71,19 +132,19 @@ dotnet run --project tools/Luma.IconGen
 
 ## Status
 
-Working player: open a file (or several as a playlist), play/pause/stop, seek,
-volume, audio/subtitle track switching, and auto-advance on end — driven entirely
-through the domain state machine. Domain and application layers are covered by 80
-unit tests; the LibVLC adapter has 3 integration smoke tests (`Category=Integration`).
+Working player: open files (dialog, drag-and-drop, command line or the recent list),
+play/pause/stop, seek, volume and mute, playback speed, audio/subtitle track switching,
+external subtitles, playlist navigation with repeat, fullscreen, and resume-where-you-
+left-off — all driven through the domain state machine.
 
-Video renders embedded in the main window (verified: no separate VLC output
-window), and files can be opened from the command line. Keyboard shortcuts,
-fullscreen, and audio/subtitle track selection are wired.
+Video renders embedded in the main window (verified: no separate VLC output window).
+169 tests: 106 over the domain, 48 over the application layer, 12 over the filesystem
+and settings adapters, and 3 LibVLC integration smoke tests (`Category=Integration`).
 
 ### Next up
 
 - Thumbnail seek preview
-- Playlist panel UI
 - Convert `Assets/luma-icon.svg` to a multi-size `.ico` for the window/taskbar
 - Property-based tests (FsCheck) over the playback state machine
 - Headless Avalonia tests for `MainViewModel`
+- Playlist reordering and `.m3u` save/load
