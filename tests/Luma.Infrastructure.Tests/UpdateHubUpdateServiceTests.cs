@@ -180,6 +180,7 @@ public sealed class UpdateHubUpdateServiceTests : IDisposable
             .CheckAsync();
 
         path.ShouldBe("/api/apps/luma/update");
+        query.ShouldNotBeNull();
         query.ShouldContain("version=1.2.3");
         query.ShouldContain("channel=beta");
     }
