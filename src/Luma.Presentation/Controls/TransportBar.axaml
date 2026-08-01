@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Luma.Presentation.Localization"
+             xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
+             x:Class="Luma.Presentation.Controls.TransportBar"
+             x:DataType="vm:MainViewModel">
+    <!--
+      The playback controls, defined once and placed twice: docked below the video when
+      windowed, floating over it in fullscreen. Two instances of one definition rather
+      than two copies of the markup, so the controls, bindings and tooltips cannot drift
+      apart. Both instances share the window's data context, so they show the same state
+      and either one drives the player.
+
+      Background and Padding are left to the instance — the docked one is opaque, the
+      fullscreen one translucent so the picture shows through.
+    -->
+
+    <StackPanel Spacing="8">
+
+        <!-- Seek row -->
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding PositionText}"
+                       Foreground="#9AA0AB" VerticalAlignment="Center" Width="60" />
+            <Slider Grid.Column="1" Minimum="0"
+                    Maximum="{Binding DurationSeconds}"
+                    Value="{Binding PositionSeconds, Mode=TwoWay}"
+                    IsEnabled="{Binding CanSeek}"
+                    VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                       Foreground="#9AA0AB" VerticalAlignment="Center"
+                       Width="60" TextAlignment="Right" />
+        </Grid>
+
+        <!--
+          Controls row. A WrapPanel rather than a Grid: with fixed columns the
+          rightmost group (the volume) was simply pushed past the window edge as soon
+          as the window narrowed. Wrapping moves whole groups onto a second line
+          instead, so every control stays reachable at any width — the bar grows taller
+          rather than losing things.
+        -->
+        <WrapPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        VerticalAlignment="Center" Margin="0,0,14,4">
+                <!-- Icon rather than a word: it sits among the transport glyphs, and
+                     the recent list moved to the right-click menu. -->
+                <Button Content="📂" Command="{Binding OpenCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.Open}" />
+                <Button Content="⏮" Command="{Binding PreviousCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.Previous}" />
+                <Button Content="{Binding PlayPauseGlyph}"
+                        Command="{Binding PlayPauseCommand}" Width="52" />
+                <Button Content="⏭" Command="{Binding NextCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.Next}" />
+                <Button Content="■" Command="{Binding StopCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.Stop}" />
+            </StackPanel>
+
+            <!--
+              The file name is not repeated here: it is the window title. Repeat, speed,
+              audio track, subtitles and language live in the right-click menu on the
+              video — they are set once and then left alone, so they do not earn
+              permanent space next to the controls people reach for constantly.
+            -->
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        VerticalAlignment="Center" Margin="0,0,14,4">
+                <Button Content="☰" Command="{Binding TogglePlaylistCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.Playlist}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        VerticalAlignment="Center">
+                <Button Content="{Binding VolumeGlyph}"
+                        Command="{Binding ToggleMuteCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="4,2" VerticalAlignment="Center"
+                        ToolTip.Tip="{loc:Localize Tooltip.Mute}" />
+                <!-- Allowed to shrink so the volume group is the last thing that would
+                     ever need a line of its own. -->
+                <Slider Minimum="0" Maximum="100"
+                        Value="{Binding Volume, Mode=TwoWay}"
+                        MinWidth="90" Width="120" VerticalAlignment="Center" />
+            </StackPanel>
+        </WrapPanel>
+
+        <!-- Update banner. Only present once the server has offered something, so a
+             player with no update configured looks exactly as before. -->
+        <Border IsVisible="{Binding IsUpdateAvailable}"
+                Background="#1B2430" BorderBrush="#2E4055" BorderThickness="1"
+                CornerRadius="4" Padding="10,7">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <TextBlock Grid.Column="0" Text="⬆" Foreground="#3FA9F5"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="1" Text="{Binding UpdateBannerText}"
+                           Foreground="#C7CBD2" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="2" Content="{loc:Localize Button.Install}"
+                        Command="{Binding InstallUpdateCommand}"
+                        Margin="8,0,6,0" />
+                <Button Grid.Column="3" Content="✕"
+                        Command="{Binding DismissUpdateCommand}"
+                        IsEnabled="{Binding !IsDownloadingUpdate}"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTip.Tip="{loc:Localize Tooltip.DismissUpdate}" />
+            </Grid>
+        </Border>
+
+        <TextBlock Text="{Binding StatusText}" Foreground="#6C7280" FontSize="12" />
+    </StackPanel>
+</UserControl>
