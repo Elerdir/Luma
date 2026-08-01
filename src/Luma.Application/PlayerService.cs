@@ -15,17 +15,25 @@ namespace Luma.Application;
 public sealed class PlayerService : IPlayer, IAsyncDisposable
 {
     private readonly IMediaEngine _engine;
+    private readonly ISubtitleFinder? _subtitleFinder;
     private readonly PlaybackSession _session = new();
     private readonly Playlist _playlist = new();
     private readonly Lock _gate = new();
     private bool _disposed;
 
-    public PlayerService(IMediaEngine engine)
+    /// <param name="engine">The media backend.</param>
+    /// <param name="subtitleFinder">
+    /// Optional. When supplied, sidecar subtitle files are attached automatically as
+    /// each source opens. Omitting it simply means no automatic discovery.
+    /// </param>
+    public PlayerService(IMediaEngine engine, ISubtitleFinder? subtitleFinder = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+        _subtitleFinder = subtitleFinder;
         _engine.Opened += OnEngineOpened;
         _engine.PositionChanged += OnEnginePositionChanged;
         _engine.EndReached += OnEngineEndReached;
+        _engine.TracksChanged += OnEngineTracksChanged;
         _engine.Failed += OnEngineFailed;
     }
 
@@ -282,6 +290,19 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         Publish(snapshot);
     }
 
+    public void AddSubtitleFile(MediaSource file)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        lock (_gate)
+        {
+            if (!_session.HasMedia)
+                throw new InvalidOperationException("Load a media file before adding subtitles.");
+
+            _engine.AddSubtitleFile(file, select: true);
+        }
+    }
+
     public void SelectSubtitleTrack(MediaTrack? track)
     {
         PlayerSnapshot snapshot;
@@ -345,6 +366,36 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
             _engine.SelectSubtitleTrack(_session.SelectedSubtitleTrack);
 
             _engine.Play();
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+
+        AttachSidecarSubtitles(snapshot.Source);
+    }
+
+    /// <summary>
+    /// Offer any subtitle files sitting next to the media. They arrive back as a
+    /// <see cref="IMediaEngine.TracksChanged"/> event; none is selected automatically,
+    /// so subtitles stay off until the user asks for them.
+    /// </summary>
+    private void AttachSidecarSubtitles(MediaSource? source)
+    {
+        if (_subtitleFinder is null || source is null)
+            return;
+
+        foreach (var subtitle in _subtitleFinder.FindFor(source))
+            _engine.AddSubtitleFile(subtitle, select: false);
+    }
+
+    private void OnEngineTracksChanged(object? sender, TracksChangedEventArgs e)
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            if (!_session.HasMedia)
+                return; // stale event from media that has since been unloaded
+
+            _session.UpdateAvailableTracks(e.Tracks);
             snapshot = BuildSnapshot();
         }
         Publish(snapshot);
@@ -442,6 +493,7 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         _engine.Opened -= OnEngineOpened;
         _engine.PositionChanged -= OnEnginePositionChanged;
         _engine.EndReached -= OnEngineEndReached;
+        _engine.TracksChanged -= OnEngineTracksChanged;
         _engine.Failed -= OnEngineFailed;
 
         await _engine.DisposeAsync().ConfigureAwait(false);

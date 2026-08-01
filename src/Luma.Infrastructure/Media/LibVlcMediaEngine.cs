@@ -31,7 +31,11 @@ public sealed class LibVlcMediaEngine : IMediaEngine
     public LibVlcMediaEngine()
     {
         EnsureCoreInitialized();
-        _libVlc = new LibVLC();
+
+        // Luma discovers sidecar subtitles itself (see FileSystemSubtitleFinder), so
+        // VLC's own scan is turned off: one mechanism, with rules that are unit-tested
+        // and cannot double-add the same file.
+        _libVlc = new LibVLC("--no-sub-autodetect-file");
         _player = new MediaPlayer(_libVlc)
         {
             // The host application owns input: without this VLC's video window
@@ -44,11 +48,13 @@ public sealed class LibVlcMediaEngine : IMediaEngine
         _player.TimeChanged += OnTimeChanged;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
+        _player.ESAdded += OnElementaryStreamAdded;
     }
 
     public event EventHandler<MediaOpenedEventArgs>? Opened;
     public event EventHandler<TimeSpan>? PositionChanged;
     public event EventHandler? EndReached;
+    public event EventHandler<TracksChangedEventArgs>? TracksChanged;
     public event EventHandler<MediaFailedEventArgs>? Failed;
 
     public async Task OpenAsync(MediaSource source, CancellationToken cancellationToken = default)
@@ -137,6 +143,14 @@ public sealed class LibVlcMediaEngine : IMediaEngine
         _player.SetSpu(track?.Id ?? -1);
     }
 
+    public void AddSubtitleFile(MediaSource file, bool select)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        ThrowIfDisposed();
+
+        _player.AddSlave(MediaSlaveType.Subtitle, file.Location.AbsoluteUri, select);
+    }
+
     /// <summary>The underlying player, needed by the Avalonia <c>VideoView</c> to render frames.</summary>
     public MediaPlayer Player => _player;
 
@@ -175,6 +189,45 @@ public sealed class LibVlcMediaEngine : IMediaEngine
     private void OnTimeChanged(object? sender, MediaPlayerTimeChangedEventArgs e) =>
         PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(e.Time));
 
+    /// <summary>
+    /// VLC registers an attached subtitle asynchronously; this fires once the stream
+    /// exists and can be enumerated. The descriptions come from the player rather than
+    /// the media, because slaves are attached to the player.
+    /// </summary>
+    private void OnElementaryStreamAdded(object? sender, MediaPlayerESAddedEventArgs e) =>
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                TracksChanged?.Invoke(this, new TracksChangedEventArgs(ReadPlayerTracks()));
+            }
+            catch (ObjectDisposedException)
+            {
+                // The player went away while the callback was queued.
+            }
+        });
+
+    /// <summary>Streams currently selectable on the player, including attached slaves.</summary>
+    private IReadOnlyList<MediaTrack> ReadPlayerTracks()
+    {
+        var tracks = new List<MediaTrack>();
+
+        foreach (var description in _player.AudioTrackDescription)
+        {
+            if (description.Id >= 0)
+                tracks.Add(MediaTrack.Audio(description.Id, description.Name ?? string.Empty));
+        }
+
+        foreach (var description in _player.SpuDescription)
+        {
+            // Id -1 is LibVLC's synthetic "Disable" entry; the domain models that as null.
+            if (description.Id >= 0)
+                tracks.Add(MediaTrack.Subtitle(description.Id, description.Name ?? string.Empty));
+        }
+
+        return tracks;
+    }
+
     private void OnEndReached(object? sender, EventArgs e) =>
         // Must not touch LibVLC from its callback thread; hop to the pool.
         ThreadPool.QueueUserWorkItem(_ => EndReached?.Invoke(this, EventArgs.Empty));
@@ -200,6 +253,7 @@ public sealed class LibVlcMediaEngine : IMediaEngine
         _player.TimeChanged -= OnTimeChanged;
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnEncounteredError;
+        _player.ESAdded -= OnElementaryStreamAdded;
 
         _player.Dispose();
         _currentMedia?.Dispose();

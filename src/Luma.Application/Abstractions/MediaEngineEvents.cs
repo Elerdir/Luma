@@ -14,6 +14,15 @@ public sealed class MediaOpenedEventArgs(TimeSpan duration, IReadOnlyList<MediaT
     public IReadOnlyList<MediaTrack> Tracks { get; } = tracks;
 }
 
+/// <summary>
+/// Raised when the selectable streams of the open media change, for example after an
+/// external subtitle file is attached. Carries the complete new list, not a delta.
+/// </summary>
+public sealed class TracksChangedEventArgs(IReadOnlyList<MediaTrack> tracks) : EventArgs
+{
+    public IReadOnlyList<MediaTrack> Tracks { get; } = tracks;
+}
+
 /// <summary>Raised when the backend fails to open or play the current source.</summary>
 public sealed class MediaFailedEventArgs(string message) : EventArgs
 {

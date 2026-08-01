@@ -83,6 +83,29 @@ public sealed class PlaybackSession
         SelectedSubtitleTrack = null;
     }
 
+    /// <summary>
+    /// Replace the known streams while keeping the current selections wherever they
+    /// still exist. Used when streams appear after opening — attaching an external
+    /// subtitle file must not reset the audio choice the user already made.
+    /// </summary>
+    public void UpdateAvailableTracks(IEnumerable<MediaTrack> tracks)
+    {
+        ArgumentNullException.ThrowIfNull(tracks);
+        if (!HasMedia)
+            throw new InvalidPlaybackTransitionException(Status, nameof(UpdateAvailableTracks));
+
+        var previousAudio = SelectedAudioTrack;
+        var previousSubtitle = SelectedSubtitleTrack;
+
+        SetAvailableTracks(tracks);
+
+        if (previousAudio is not null && _audioTracks.Contains(previousAudio))
+            SelectedAudioTrack = previousAudio;
+
+        if (previousSubtitle is not null && _subtitleTracks.Contains(previousSubtitle))
+            SelectedSubtitleTrack = previousSubtitle;
+    }
+
     /// <summary>Choose the active audio stream. The track must be one of <see cref="AudioTracks"/>.</summary>
     public void SelectAudioTrack(MediaTrack track)
     {

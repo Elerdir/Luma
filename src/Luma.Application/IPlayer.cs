@@ -42,6 +42,13 @@ public interface IPlayer
     /// <summary>Switch the active subtitle stream, or pass <c>null</c> to turn subtitles off.</summary>
     void SelectSubtitleTrack(MediaTrack? track);
 
+    /// <summary>
+    /// Attach an external subtitle file to the loaded media and select it. The new
+    /// stream appears in the next snapshot's <see cref="PlayerSnapshot.SubtitleTracks"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No media is loaded.</exception>
+    void AddSubtitleFile(MediaSource file);
+
     Task NextAsync(CancellationToken cancellationToken = default);
     Task PreviousAsync(CancellationToken cancellationToken = default);
 

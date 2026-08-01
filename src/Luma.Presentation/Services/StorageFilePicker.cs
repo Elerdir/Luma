@@ -11,6 +11,23 @@ public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
         Patterns = ["*.mp4", "*.mkv", "*.avi", "*.mov", "*.webm", "*.m4v", "*.flv", "*.wmv", "*.mpg", "*.mpeg", "*.ts"]
     };
 
+    private static readonly FilePickerFileType SubtitleFiles = new("Subtitle files")
+    {
+        Patterns = ["*.srt", "*.ass", "*.ssa", "*.sub", "*.vtt", "*.idx"]
+    };
+
+    public async Task<string?> PickSubtitleAsync()
+    {
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open subtitle",
+            AllowMultiple = false,
+            FileTypeFilter = [SubtitleFiles, FilePickerFileTypes.All]
+        });
+
+        return files.Count == 0 ? null : files[0].TryGetLocalPath();
+    }
+
     public async Task<IReadOnlyList<string>> PickVideosAsync()
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
