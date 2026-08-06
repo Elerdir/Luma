@@ -18,23 +18,11 @@
         Background="#0E0F13"
         DragDrop.AllowDrop="True">
 
-    <Window.KeyBindings>
-        <KeyBinding Gesture="Space" Command="{Binding PlayPauseCommand}" />
-        <KeyBinding Gesture="K" Command="{Binding PlayPauseCommand}" />
-        <KeyBinding Gesture="Left" Command="{Binding SeekBackwardCommand}" />
-        <KeyBinding Gesture="Right" Command="{Binding SeekForwardCommand}" />
-        <KeyBinding Gesture="Shift+Left" Command="{Binding SeekBackwardLargeCommand}" />
-        <KeyBinding Gesture="Shift+Right" Command="{Binding SeekForwardLargeCommand}" />
-        <KeyBinding Gesture="Up" Command="{Binding VolumeUpCommand}" />
-        <KeyBinding Gesture="Down" Command="{Binding VolumeDownCommand}" />
-        <KeyBinding Gesture="M" Command="{Binding ToggleMuteCommand}" />
-        <KeyBinding Gesture="S" Command="{Binding StopCommand}" />
-        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
-        <KeyBinding Gesture="N" Command="{Binding NextCommand}" />
-        <KeyBinding Gesture="P" Command="{Binding PreviousCommand}" />
-        <KeyBinding Gesture="R" Command="{Binding CycleRepeatCommand}" />
-        <KeyBinding Gesture="L" Command="{Binding TogglePlaylistCommand}" />
-    </Window.KeyBindings>
+    <!--
+      Shortcuts are not KeyBindings; they live in the code-behind. A KeyBinding here
+      only fires once the key event reaches this window, and two everyday situations
+      stop it getting here at all — see MainWindow.axaml.cs.
+    -->
 
     <Grid Name="RootGrid" RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
 

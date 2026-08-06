@@ -15,6 +15,18 @@
       fullscreen one translucent so the picture shows through.
     -->
 
+    <UserControl.Styles>
+        <!--
+          The transport buttons never take keyboard focus. They are pressed with the
+          mouse, and a focused one competes with the shortcuts for Space: click Pause
+          and then press Space, and the key belongs to the button rather than to
+          playback. Nothing here needs to be reachable by Tab.
+        -->
+        <Style Selector="Button">
+            <Setter Property="Focusable" Value="False" />
+        </Style>
+    </UserControl.Styles>
+
     <StackPanel Spacing="8">
 
         <!-- Seek row -->
