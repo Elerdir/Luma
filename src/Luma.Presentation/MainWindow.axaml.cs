@@ -31,6 +31,7 @@ public partial class MainWindow : Window
         // Bubble, so a control that scrolls on its own — a combo box, a slider — gets
         // the wheel first and this only sees what nothing else wanted.
         AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Bubble);
+        ListenForKeysOn(this);
         _idleTimer.Tick += OnIdleElapsed;
         Resized += OnResized;
 
@@ -45,6 +46,11 @@ public partial class MainWindow : Window
             overlay.AddHandler(PointerMovedEvent, OnPointerMovedAnywhere, RoutingStrategies.Tunnel);
             overlay.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Bubble);
             overlay.AddHandler(PointerReleasedEvent, OnVideoPointerReleased, RoutingStrategies.Bubble);
+            // Key events route from whatever holds focus up to its root. Click the
+            // picture and focus lands on the root of VideoView's floating window, above
+            // this panel — so the handlers have to sit on that window, not here. It does
+            // not exist until the overlay is attached.
+            overlay.AttachedToVisualTree += (_, _) => ListenForKeysOn(TopLevel.GetTopLevel(overlay));
         }
     }
 
@@ -184,47 +190,136 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    protected override void OnKeyDown(KeyEventArgs e)
+    // ---- Keyboard shortcuts ----
+    //
+    // These were Window.KeyBindings, and mostly did not work. A KeyBinding only fires
+    // once the key event reaches the window, and two everyday situations stop it:
+    //
+    //   * Click any control in the transport bar and it keeps focus. Space is what
+    //     presses a focused button, so the button swallowed it and playback never
+    //     paused — the symptom that started this.
+    //   * The video overlay is VideoView's own top-level window. Keys pressed while the
+    //     picture has focus are delivered there and never reach this window.
+    //
+    // So the handler is registered on both surfaces, and the keys a focused control
+    // would otherwise swallow are claimed on the way down. Everything else waits for
+    // the bubble pass, so a combo box, a slider or the playlist keeps its own arrows.
+
+    /// <summary>
+    /// Keys that a focused control would consume before the window ever saw them.
+    /// Deliberately the shortest possible list: taking a key on the way down means
+    /// taking it away from whatever is focused.
+    /// </summary>
+    private static bool IsClaimedOnTheWayDown(Key key) => key is Key.Space;
+
+    private readonly HashSet<TopLevel> _keyboardSurfaces = [];
+
+    /// <summary>
+    /// Give a top-level the same shortcuts this window has. Idempotent: the overlay is
+    /// re-attached whenever the video surface is rebuilt.
+    /// </summary>
+    private void ListenForKeysOn(TopLevel? surface)
     {
-        switch (e.Key)
-        {
-            case Key.F or Key.F11:
-                ToggleFullscreen();
-                e.Handled = true;
-                break;
-            case Key.Escape when _isFullscreen:
-                SetFullscreen(false);
-                e.Handled = true;
-                break;
+        if (surface is null || !_keyboardSurfaces.Add(surface))
+            return;
 
-            // Page down/up step through the folder the file came from — the next and
-            // previous episode. The same thing the ⏭ and ⏮ buttons do, on the keys a
-            // person's hand is already near while watching.
-            case Key.PageDown:
-                e.Handled = Invoke(vm => vm.NextCommand);
-                break;
-            case Key.PageUp:
-                e.Handled = Invoke(vm => vm.PreviousCommand);
-                break;
-        }
+        surface.AddHandler(KeyDownEvent, OnKeyDownTunnel, RoutingStrategies.Tunnel);
+        surface.AddHandler(KeyDownEvent, OnKeyDownBubble, RoutingStrategies.Bubble);
+        surface.AddHandler(KeyUpEvent, OnKeyUpTunnel, RoutingStrategies.Tunnel);
+    }
 
-        base.OnKeyDown(e);
+    private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
+    {
+        if (!IsClaimedOnTheWayDown(e.Key))
+            return;
+
+        e.Handled = HandleShortcut(e);
+        _swallowNextSpaceUp = e.Handled && e.Key is Key.Space;
+    }
+
+    private bool _swallowNextSpaceUp;
+
+    /// <summary>
+    /// A button presses on Space down but clicks on Space up, so claiming only the down
+    /// half still let a focused button fire: Space paused the video <em>and</em> pressed
+    /// whatever had last been clicked. Eat the release that belongs to a Space we took.
+    /// </summary>
+    private void OnKeyUpTunnel(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is not Key.Space || !_swallowNextSpaceUp)
+            return;
+
+        _swallowNextSpaceUp = false;
+        e.Handled = true;
+    }
+
+    private void OnKeyDownBubble(object? sender, KeyEventArgs e)
+    {
+        if (e.Handled || IsClaimedOnTheWayDown(e.Key))
+            return;
+
+        e.Handled = HandleShortcut(e);
     }
 
     /// <summary>
-    /// Run a view-model command if it is currently allowed, reporting whether it ran.
-    /// A key that could not do anything is left unhandled rather than silently eaten.
+    /// Run the shortcut for a key, reporting whether anything happened. A key that
+    /// could not do anything — Next with nothing to go to — is left unhandled rather
+    /// than silently eaten.
     /// </summary>
-    private bool Invoke(Func<MainViewModel, ICommand> pick)
+    private bool HandleShortcut(KeyEventArgs e)
     {
         if (DataContext is not MainViewModel vm)
             return false;
 
-        var command = pick(vm);
+        // Never take a key away from somewhere text is being typed.
+        if (e.Source is TextBox)
+            return false;
+
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        // Ctrl+O is the only shortcut with a modifier of its own; anything else held
+        // down means the user is asking for something that is not ours.
+        if (alt || (control && e.Key is not Key.O))
+            return false;
+
+        return e.Key switch
+        {
+            Key.Space or Key.K => Run(vm.PlayPauseCommand),
+            Key.Left => Run(shift ? vm.SeekBackwardLargeCommand : vm.SeekBackwardCommand),
+            Key.Right => Run(shift ? vm.SeekForwardLargeCommand : vm.SeekForwardCommand),
+            Key.Up => Run(vm.VolumeUpCommand),
+            Key.Down => Run(vm.VolumeDownCommand),
+            Key.M => Run(vm.ToggleMuteCommand),
+            Key.S => Run(vm.StopCommand),
+            Key.R => Run(vm.CycleRepeatCommand),
+            Key.L => Run(vm.TogglePlaylistCommand),
+            Key.O when control => Run(vm.OpenCommand),
+
+            // Next and previous, on both the letters and the keys a hand already rests
+            // near while watching: page down is the next episode in the folder.
+            Key.N or Key.PageDown => Run(vm.NextCommand),
+            Key.P or Key.PageUp => Run(vm.PreviousCommand),
+
+            Key.F or Key.F11 => ToggleFullscreenFromKey(),
+            Key.Escape when _isFullscreen => ToggleFullscreenFromKey(),
+            _ => false
+        };
+    }
+
+    private static bool Run(ICommand command)
+    {
         if (!command.CanExecute(null))
             return false;
 
         command.Execute(null);
+        return true;
+    }
+
+    private bool ToggleFullscreenFromKey()
+    {
+        ToggleFullscreen();
         return true;
     }
 
