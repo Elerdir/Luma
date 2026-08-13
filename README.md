@@ -124,11 +124,16 @@ Integration tests load the native libraries, so headless CI excludes them:
 dotnet test --filter "Category!=Integration"
 ```
 
-Open a file directly (file association / CLI):
+Open a file directly from the command line:
 
 ```bash
 dotnet run --project src/Luma.Presentation -- "C:\videos\clip.mkv"
 ```
+
+The MSI registers Luma as a handler for the media types it plays, so it appears under
+**Open with** and can be picked in **Settings › Default apps**. It does not take any
+association for itself — on Windows 10 and later an installer cannot make itself the
+default anyway, and doing it without asking would be rude where it can.
 
 ### Windows helper scripts
 

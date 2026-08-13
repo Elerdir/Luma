@@ -30,6 +30,7 @@
       <ComponentGroupRef Id="LumaBinaries" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="FileAssociations" />
     </Feature>
   </Package>
 
@@ -79,6 +80,141 @@
                 Icon="LumaIcon" />
       <RegistryValue Root="HKCU" Key="Software\Elerdir\Luma"
                      Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+  <!--
+    File associations.
+
+    Luma is registered as a handler and offered for these types; it does not take the
+    default. An installer cannot make itself the default on Windows 10 and later anyway
+    — that is the user's choice, made in Settings — and taking associations without
+    asking is rude even where it is possible.
+
+    Two halves: OpenWithProgIds puts Luma in the "Open with" list, and the Capabilities
+    key is what makes it selectable in Settings › Default apps.
+  -->
+  <Fragment>
+    <Component Id="FileAssociations" Directory="INSTALLFOLDER"
+               Guid="2E21DD03-92C6-4F51-98EB-75563B03872A">
+
+      <!-- The handler itself: what to run, what to call it, what to show. -->
+      <RegistryValue Root="HKLM" Key="Software\Classes\Luma.Media"
+                     Value="Luma media file" Type="string" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Luma.Media"
+                     Name="FriendlyTypeName" Value="Luma media file" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Luma.Media\DefaultIcon"
+                     Value="[INSTALLFOLDER]Luma.exe,0" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Luma.Media\shell\open"
+                     Name="FriendlyAppName" Value="Luma" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\Luma.Media\shell\open\command"
+                     Value="&quot;[INSTALLFOLDER]Luma.exe&quot; &quot;%1&quot;" Type="string" />
+
+      <!-- Offered for these types, without claiming any of them. -->
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mkv\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mp4\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.m4v\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.avi\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mov\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.wmv\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.flv\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.webm\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mpg\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mpeg\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.m2ts\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.ts\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.vob\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.ogv\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.3gp\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.divx\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.mp3\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.flac\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.m4a\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.aac\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.ogg\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.opus\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.wav\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Classes\.wma\OpenWithProgIds"
+                     Name="Luma.Media" Value="" Type="string" />
+
+      <!-- Shown in Settings › Default apps, so the choice can be made there. -->
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities"
+                     Name="ApplicationName" Value="Luma" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities"
+                     Name="ApplicationDescription" Value="Play a video" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mkv" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mp4" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".m4v" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".avi" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mov" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".wmv" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".flv" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".webm" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mpg" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mpeg" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".m2ts" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".ts" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".vob" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".ogv" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".3gp" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".divx" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".mp3" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".flac" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".m4a" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".aac" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".ogg" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".opus" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".wav" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\Elerdir\Luma\Capabilities\FileAssociations"
+                     Name=".wma" Value="Luma.Media" Type="string" />
+      <RegistryValue Root="HKLM" Key="Software\RegisteredApplications"
+                     Name="Luma" Value="Software\Elerdir\Luma\Capabilities" Type="string" />
     </Component>
   </Fragment>
 
