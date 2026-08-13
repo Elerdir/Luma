@@ -27,6 +27,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     private PlayerSnapshot? _lastSnapshot;
 
+    // What the collections above were last built from. The domain reuses the same
+    // instance until the underlying list changes, so comparing references is enough to
+    // know there is nothing to do — and there is nothing to do on almost every tick.
+    private IReadOnlyList<MediaSource>? _appliedPlaylist;
+    private IReadOnlyList<MediaTrack>? _appliedAudioTracks;
+    private IReadOnlyList<MediaTrack>? _appliedSubtitleTracks;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WindowTitle))]
     private string _mediaName = NoMediaName;
@@ -190,6 +197,11 @@ public sealed partial class MainViewModel : ObservableObject
     private void RefreshLocalizedText()
     {
         SubtitlesOff = MediaTrack.Subtitle(-1, Localizer.Instance["Subtitles.Off"]);
+
+        // The subtitle dropdown carries the "off" entry, whose label just changed, so it
+        // has to be rebuilt even though the player's tracks did not change. Forgetting
+        // what it was built from is what makes the rebuild happen.
+        _appliedSubtitleTracks = null;
 
         OnPropertyChanged(nameof(RepeatLabel));
         OnPropertyChanged(nameof(UpdateBannerText));
@@ -551,20 +563,30 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private void SyncTracks(PlayerSnapshot s)
     {
-        if (!AudioTracks.SequenceEqual(s.AudioTracks))
+        // The domain hands back the same instance until the tracks actually change, so
+        // the usual case costs a reference comparison rather than walking both lists.
+        if (!ReferenceEquals(_appliedAudioTracks, s.AudioTracks) &&
+            !AudioTracks.SequenceEqual(s.AudioTracks))
         {
             AudioTracks.Clear();
             foreach (var track in s.AudioTracks)
                 AudioTracks.Add(track);
         }
 
-        var expectedSubtitles = new List<MediaTrack> { SubtitlesOff };
-        expectedSubtitles.AddRange(s.SubtitleTracks);
-        if (!SubtitleOptions.SequenceEqual(expectedSubtitles))
+        _appliedAudioTracks = s.AudioTracks;
+
+        if (!ReferenceEquals(_appliedSubtitleTracks, s.SubtitleTracks))
         {
-            SubtitleOptions.Clear();
-            foreach (var option in expectedSubtitles)
-                SubtitleOptions.Add(option);
+            var expectedSubtitles = new List<MediaTrack> { SubtitlesOff };
+            expectedSubtitles.AddRange(s.SubtitleTracks);
+            if (!SubtitleOptions.SequenceEqual(expectedSubtitles))
+            {
+                SubtitleOptions.Clear();
+                foreach (var option in expectedSubtitles)
+                    SubtitleOptions.Add(option);
+            }
+
+            _appliedSubtitleTracks = s.SubtitleTracks;
         }
 
         SelectedAudioTrack = s.SelectedAudioTrack;
@@ -579,7 +601,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// </summary>
     private void SyncPlaylist(PlayerSnapshot s)
     {
-        if (!Playlist.Select(i => i.Source).SequenceEqual(s.PlaylistItems))
+        if (!ReferenceEquals(_appliedPlaylist, s.PlaylistItems) &&
+            !Playlist.Select(i => i.Source).SequenceEqual(s.PlaylistItems))
         {
             var previous = SelectedPlaylistItem?.Source;
 
@@ -591,6 +614,8 @@ public sealed partial class MainViewModel : ObservableObject
                 ? null
                 : Playlist.FirstOrDefault(i => i.Source == previous);
         }
+
+        _appliedPlaylist = s.PlaylistItems;
 
         for (var i = 0; i < Playlist.Count; i++)
             Playlist[i].IsCurrent = i == s.PlaylistIndex;

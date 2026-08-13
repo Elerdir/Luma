@@ -547,10 +547,13 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         _session.FaultMessage,
         _playlist.Count,
         _playlist.CurrentIndex,
-        [.. _playlist.Items],
+        // Passed on rather than copied: these are already immutable snapshots that the
+        // domain rebuilds only when they change, and a snapshot is built on every
+        // position tick.
+        _playlist.Items,
         _playlist.Repeat,
-        [.. _session.AudioTracks],
-        [.. _session.SubtitleTracks],
+        _session.AudioTracks,
+        _session.SubtitleTracks,
         _session.SelectedAudioTrack,
         _session.SelectedSubtitleTrack);
 

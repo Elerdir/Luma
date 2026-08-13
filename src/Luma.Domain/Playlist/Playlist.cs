@@ -9,8 +9,17 @@ namespace Luma.Domain.Playlists;
 public sealed class Playlist
 {
     private readonly List<MediaSource> _items = [];
+    private IReadOnlyList<MediaSource>? _view;
 
-    public IReadOnlyList<MediaSource> Items => _items;
+    /// <summary>
+    /// The entries, as a snapshot that callers may hold on to.
+    ///
+    /// Cached and rebuilt only when the list actually changes: the read-model handed to
+    /// the UI is rebuilt on every position tick — four times a second — and copying a
+    /// folder of episodes each time was pure waste. Reusing the same instance also lets
+    /// the UI skip its own comparison with a reference check.
+    /// </summary>
+    public IReadOnlyList<MediaSource> Items => _view ??= [.. _items];
     public int CurrentIndex { get; private set; } = -1;
     public RepeatMode Repeat { get; set; } = RepeatMode.None;
 
@@ -24,6 +33,7 @@ public sealed class Playlist
     {
         ArgumentNullException.ThrowIfNull(source);
         _items.Add(source);
+        _view = null;
         if (CurrentIndex < 0)
             CurrentIndex = 0;
     }
@@ -42,6 +52,7 @@ public sealed class Playlist
             throw new ArgumentOutOfRangeException(nameof(index));
 
         _items.RemoveAt(index);
+        _view = null;
 
         if (_items.Count == 0)
             CurrentIndex = -1;
@@ -54,6 +65,7 @@ public sealed class Playlist
     public void Clear()
     {
         _items.Clear();
+        _view = null;
         CurrentIndex = -1;
     }
 
