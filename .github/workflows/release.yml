@@ -38,13 +38,20 @@ jobs:
     steps:
       - id: resolve
         shell: bash
+        # Both values arrive through env rather than being pasted into the script.
+        # ${{ }} is substituted as text before the shell ever sees it, so a tag or an
+        # input containing shell syntax would run as part of this step; read as a
+        # variable it is only ever data.
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
+          if [ "$EVENT" = "release" ]; then
             # Strip a leading "v" from the tag: v1.2.0 -> 1.2.0
-            raw='${{ github.event.release.tag_name }}'
-            echo "version=${raw#v}" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           fi
 
   windows:
@@ -105,9 +112,18 @@ jobs:
       - name: Fetch libvlc from the official VLC release
         env:
           VLC_VERSION: '3.0.21'
+          # Pinned, not fetched alongside the download: get.videolan.org redirects to
+          # community mirrors, and a checksum taken from the same place as the file
+          # proves only that the transfer was intact. This value was read from two
+          # independent mirrors (ftp.sh.cvut.cz, ftp.fau.de) and matches VideoLAN's
+          # published vlc-3.0.21-arm64.dmg.sha256. Bumping VLC_VERSION means replacing
+          # it — the build stops until someone does.
+          VLC_SHA256: '15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044'
         run: |
           curl -fsSL -o vlc.dmg \
             "https://get.videolan.org/vlc/${VLC_VERSION}/macosx/vlc-${VLC_VERSION}-arm64.dmg"
+
+          echo "${VLC_SHA256}  vlc.dmg" | shasum -a 256 -c -
 
           hdiutil attach vlc.dmg -mountpoint /Volumes/VLC-luma -nobrowse -quiet
           mkdir -p build/libvlc
@@ -192,7 +208,8 @@ jobs:
       - name: Attach installers to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
 
       - name: Upload to UpdateHub
         env:
