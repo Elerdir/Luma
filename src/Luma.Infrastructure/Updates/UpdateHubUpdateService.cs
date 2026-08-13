@@ -60,6 +60,13 @@ public sealed class UpdateHubUpdateService : IUpdateService
             if (!options.IsConfigured)
                 return null;
 
+            // A server reached over plain HTTP could be spoken for by anyone on the
+            // network, and what it offers ends up being executed. Silent, like every
+            // other reason a check comes back empty: nobody opened a video player to
+            // hear about update configuration.
+            if (!UpdateSafety.IsAcceptableUrl(options.ServerUrl))
+                return null;
+
             using var client = new UpdateHubClient(options.ServerUrl, options.AppSlug);
             var result = await client
                 .CheckForUpdateAsync(_currentVersion, options.Channel, cancellationToken)
@@ -68,6 +75,11 @@ public sealed class UpdateHubUpdateService : IUpdateService
             // A release with no artifact for this platform still reports HasUpdate,
             // but there is nothing to offer the user.
             if (!result.HasUpdate || string.IsNullOrWhiteSpace(result.DownloadUrl))
+                return null;
+
+            // Nothing to offer if it could not be installed anyway — see DownloadAsync.
+            if (!UpdateSafety.IsFromSameServer(result.DownloadUrl, options.ServerUrl) ||
+                string.IsNullOrWhiteSpace(result.Sha256))
                 return null;
 
             return new AvailableUpdate(
@@ -98,20 +110,36 @@ public sealed class UpdateHubUpdateService : IUpdateService
 
         var options = await GetOptionsAsync(cancellationToken).ConfigureAwait(false);
 
+        // Checked again here rather than trusted from the check: this is the method that
+        // produces a file somebody is about to run, and it is public.
+        if (!UpdateSafety.IsAcceptableUrl(options.ServerUrl))
+            throw new InvalidOperationException(
+                "The update server must be reached over HTTPS.");
+
+        if (!UpdateSafety.IsFromSameServer(update.DownloadUrl, options.ServerUrl))
+            throw new InvalidOperationException(
+                "The update points somewhere other than the configured update server.");
+
+        // No hash, no install. This used to be conditional, which meant a server that
+        // simply omitted the hash got its installer run unverified — the one case where
+        // verification matters most.
+        if (string.IsNullOrWhiteSpace(update.Sha256))
+            throw new InvalidOperationException(
+                "The update server did not publish a checksum for this release.");
+
         var destination = Path.Combine(
             Path.GetTempPath(),
             "Luma-updates",
-            $"Luma-{update.Version}{InstallerExtension}");
+            // The version comes from the server; concatenated raw it could climb out of
+            // the folder or name an absolute path.
+            $"Luma-{UpdateSafety.FileNamePart(update.Version)}{InstallerExtension}");
 
         using var client = new UpdateHubClient(options.ServerUrl, options.AppSlug);
         await client
             .DownloadAsync(update.DownloadUrl, destination, progress, cancellationToken)
             .ConfigureAwait(false);
 
-        // The download is about to be executed, so a mismatch is a hard stop rather
-        // than something to warn about and carry on.
-        if (!string.IsNullOrWhiteSpace(update.Sha256) &&
-            !UpdateHubClient.VerifySha256(destination, update.Sha256))
+        if (!UpdateHubClient.VerifySha256(destination, update.Sha256))
         {
             TryDelete(destination);
             throw new InvalidOperationException(

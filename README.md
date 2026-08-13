@@ -196,11 +196,20 @@ your server:
 
 On the next start, if the server offers a newer release for this platform, a banner
 appears above the status line. Installing downloads the artifact, verifies it against
-the SHA-256 the server reported, launches it and closes Luma so it can be replaced. A
-hash mismatch discards the download rather than running it.
+the SHA-256 the server reported, launches it and closes Luma so it can be replaced.
 
-A failed check is silent by design: an unreachable, moved or misconfigured server must
-not interrupt someone watching a film.
+What arrives is executed — as an MSI asking for administrator rights on Windows — so an
+update is refused outright unless all of this holds:
+
+| Rule | Why |
+|---|---|
+| `ServerUrl` is `https` (or `http` on this machine) | plain HTTP over a network can be spoken for by anyone on it |
+| The download comes from that same server | UpdateHub serves artifacts from its own origin; anywhere else means tampering or misconfiguration |
+| The release has a SHA-256, and the file matches it | UpdateHub computes the hash itself on upload, so a missing one is not normal |
+
+A failed check is silent by design — an unreachable, moved or misconfigured server must
+not interrupt someone watching a film — and so is a release that fails these rules.
+A hash mismatch at install time is reported in the banner and the download is discarded.
 
 Register the app in UpdateHub with a slug matching `AppSlug`, then let the release
 workflow upload builds to it — see the [Releases](#releases) section above.
