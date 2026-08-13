@@ -88,20 +88,27 @@ public sealed class UpdateHubUpdateServiceTests : IDisposable
         asked.ShouldBeFalse();
     }
 
+    /// <summary>
+    /// A release as UpdateHub actually serves one: the artifact lives on the server's own
+    /// origin and carries the checksum the server computed when it was uploaded.
+    /// </summary>
+    private string OfferedRelease(string? downloadUrl = null, string? sha256 = "abc123") =>
+        $$"""
+        {
+          "has_update": true,
+          "version": "1.5.0",
+          "release_notes": "Fixes",
+          "download_url": "{{downloadUrl ?? $"{_baseUrl}/api/downloads/1"}}",
+          {{(sha256 is null ? "" : $"\"sha256\": \"{sha256}\",")}}
+          "is_mandatory": true,
+          "channel": "stable"
+        }
+        """;
+
     [Fact]
     public async Task A_newer_release_is_reported()
     {
-        _respond = _ => (200, """
-            {
-              "has_update": true,
-              "version": "1.5.0",
-              "release_notes": "Fixes",
-              "download_url": "http://example.invalid/luma.msi",
-              "sha256": "abc123",
-              "is_mandatory": true,
-              "channel": "stable"
-            }
-            """);
+        _respond = _ => (200, OfferedRelease());
 
         var result = await Service(_baseUrl).CheckAsync();
 
@@ -110,6 +117,41 @@ public sealed class UpdateHubUpdateServiceTests : IDisposable
         result.ReleaseNotes.ShouldBe("Fixes");
         result.Sha256.ShouldBe("abc123");
         result.IsMandatory.ShouldBeTrue();
+    }
+
+    // ---- What the player refuses to be offered ----
+    //
+    // Whatever comes back from here ends up being executed, so each of these is a hard
+    // gate rather than a warning. They fail the same way every other update problem
+    // does: silently, because nobody opened a video player to hear about it.
+
+    [Fact]
+    public async Task A_release_with_no_checksum_is_not_offered()
+    {
+        _respond = _ => (200, OfferedRelease(sha256: null));
+
+        (await Service(_baseUrl).CheckAsync()).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_download_pointing_elsewhere_is_not_offered()
+    {
+        _respond = _ => (200, OfferedRelease(downloadUrl: "https://example.invalid/luma.msi"));
+
+        (await Service(_baseUrl).CheckAsync()).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A_server_reached_over_plain_http_is_not_used()
+    {
+        var asked = false;
+        _respond = _ => { asked = true; return (200, OfferedRelease()); };
+
+        // Not loopback, so plain HTTP is refused before anything is sent.
+        var result = await Service("http://updates.example.invalid").CheckAsync();
+
+        result.ShouldBeNull();
+        asked.ShouldBeFalse();
     }
 
     [Fact]
