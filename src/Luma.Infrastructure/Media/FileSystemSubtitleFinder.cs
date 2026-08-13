@@ -10,9 +10,6 @@ namespace Luma.Infrastructure.Media;
 /// </summary>
 public sealed class FileSystemSubtitleFinder : ISubtitleFinder
 {
-    private static readonly string[] SubtitleExtensions =
-        [".srt", ".ass", ".ssa", ".sub", ".vtt", ".idx"];
-
     private static readonly string[] NearbyFolders = ["Subs", "Subtitles"];
 
     public IReadOnlyList<MediaSource> FindFor(MediaSource media)
@@ -64,7 +61,7 @@ public sealed class FileSystemSubtitleFinder : ISubtitleFinder
 
         foreach (var candidate in candidates.Order(StringComparer.OrdinalIgnoreCase))
         {
-            if (!SubtitleExtensions.Contains(Path.GetExtension(candidate), StringComparer.OrdinalIgnoreCase))
+            if (!MediaFileTypes.IsSubtitle(candidate))
                 continue;
 
             var name = Path.GetFileNameWithoutExtension(candidate);

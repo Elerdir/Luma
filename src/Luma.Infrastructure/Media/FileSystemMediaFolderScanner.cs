@@ -9,19 +9,6 @@ namespace Luma.Infrastructure.Media;
 /// </summary>
 public sealed class FileSystemMediaFolderScanner : IMediaFolderScanner
 {
-    /// <summary>
-    /// Video and audio containers worth offering as the "next" file. Deliberately a
-    /// list rather than "everything that is not a subtitle": a folder of a series also
-    /// holds .nfo, .jpg and .txt files, and stepping onto one of those would look like
-    /// the player breaking.
-    /// </summary>
-    private static readonly string[] PlayableExtensions =
-    [
-        ".mkv", ".mp4", ".m4v", ".avi", ".mov", ".wmv", ".flv", ".webm",
-        ".mpg", ".mpeg", ".m2ts", ".ts", ".vob", ".ogv", ".3gp", ".divx",
-        ".mp3", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".wav", ".wma"
-    ];
-
     public IReadOnlyList<MediaSource> FindSiblingsOf(MediaSource media)
     {
         ArgumentNullException.ThrowIfNull(media);
@@ -51,12 +38,9 @@ public sealed class FileSystemMediaFolderScanner : IMediaFolderScanner
         return
         [
             .. files
-                .Where(IsPlayable)
+                .Where(MediaFileTypes.IsPlayable)
                 .OrderBy(path => Path.GetFileName(path)!, NaturalNameComparer.Instance)
                 .Select(MediaSource.FromFile)
         ];
     }
-
-    private static bool IsPlayable(string path) =>
-        PlayableExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 }

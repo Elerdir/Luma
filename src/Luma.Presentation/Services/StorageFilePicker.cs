@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Luma.Domain.Media;
 using Luma.Presentation.Localization;
 
 namespace Luma.Presentation.Services;
@@ -8,15 +9,17 @@ namespace Luma.Presentation.Services;
 public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
 {
     // Built per call rather than cached in a static field: the label is localized, and
-    // a field initialised once would keep whatever language the app started in.
-    private static FilePickerFileType VideoFiles => new(Localizer.Instance["Picker.VideoFiles"])
+    // a field initialised once would keep whatever language the app started in. The
+    // patterns come from MediaFileTypes, so the dialog offers exactly what the folder
+    // scan picks up — the two used to disagree.
+    private static FilePickerFileType MediaFiles => new(Localizer.Instance["Picker.MediaFiles"])
     {
-        Patterns = ["*.mp4", "*.mkv", "*.avi", "*.mov", "*.webm", "*.m4v", "*.flv", "*.wmv", "*.mpg", "*.mpeg", "*.ts"]
+        Patterns = MediaFileTypes.AsPatterns(MediaFileTypes.Playable)
     };
 
     private static FilePickerFileType SubtitleFiles => new(Localizer.Instance["Picker.SubtitleFiles"])
     {
-        Patterns = ["*.srt", "*.ass", "*.ssa", "*.sub", "*.vtt", "*.idx"]
+        Patterns = MediaFileTypes.AsPatterns(MediaFileTypes.Subtitle)
     };
 
     public async Task<string?> PickSubtitleAsync()
@@ -37,7 +40,7 @@ public sealed class StorageFilePicker(TopLevel topLevel) : IFilePicker
         {
             Title = Localizer.Instance["Picker.OpenVideo"],
             AllowMultiple = true,
-            FileTypeFilter = [VideoFiles, FilePickerFileTypes.All]
+            FileTypeFilter = [MediaFiles, FilePickerFileTypes.All]
         });
 
         return files
