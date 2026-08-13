@@ -213,6 +213,10 @@ settings type under the user's application data directory:
 Deleting them resets Luma to a fresh install. A missing or corrupt file falls back to
 defaults rather than blocking startup.
 
+`PlayerPreferences.json` also remembers where you left each file, so reopening it picks
+up from there. That list is deliberately a working set, not a history: the newest 50
+positions are kept, and anything untouched for 90 days is dropped.
+
 `InterfaceOptions.json` holds the choices made from the right-click menu:
 
 | Setting | Default | Meaning |
