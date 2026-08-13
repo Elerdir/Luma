@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  checks:
     # Luma ships for Windows and macOS, so a Linux-only check was proving less than it
     # looked: nothing platform-specific, and none of the packaging, ever ran on a pull
     # request. Ubuntu stays because it is the fastest way to catch a path or casing
@@ -43,3 +43,19 @@ jobs:
       - name: Integration tests
         if: matrix.os == 'windows-latest'
         run: dotnet test --no-build --configuration Release --filter "Category=Integration"
+
+  # One status check with a stable name for branch protection to require.
+  #
+  # A matrix reports as "checks (ubuntu-latest)", "checks (windows-latest)" and so on —
+  # names that change whenever the matrix does, and a required check that no longer
+  # appears blocks every pull request for ever. This job is the single name that outlives
+  # the matrix; it passes only when every leg passed.
+  build:
+    needs: checks
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report matrix result
+        run: |
+          echo "checks: ${{ needs.checks.result }}"
+          [ "${{ needs.checks.result }}" = "success" ]
