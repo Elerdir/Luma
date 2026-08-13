@@ -8,7 +8,16 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Luma ships for Windows and macOS, so a Linux-only check was proving less than it
+    # looked: nothing platform-specific, and none of the packaging, ever ran on a pull
+    # request. Ubuntu stays because it is the fastest way to catch a path or casing
+    # assumption that only bites away from Windows.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -20,10 +29,17 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      # -warnaserror: the build is at zero warnings, and this is what keeps it there.
+      # A warning that nothing blocks is a warning that accumulates.
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build --no-restore --configuration Release -warnaserror
 
-      # Integration tests load the native LibVLC libraries, which are not present
-      # on a headless runner. They are excluded here and run locally instead.
       - name: Test
         run: dotnet test --no-build --configuration Release --filter "Category!=Integration"
+
+      # The integration tests load the native LibVLC libraries, which arrive with the
+      # VideoLAN.LibVLC.Windows package — so Windows is the one runner that can actually
+      # run them. Headless: they construct and dispose the engine, they do not render.
+      - name: Integration tests
+        if: matrix.os == 'windows-latest'
+        run: dotnet test --no-build --configuration Release --filter "Category=Integration"
