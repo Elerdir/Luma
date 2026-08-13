@@ -28,9 +28,13 @@ public sealed class PlaybackSession
 
     private readonly List<MediaTrack> _audioTracks = [];
     private readonly List<MediaTrack> _subtitleTracks = [];
+    private IReadOnlyList<MediaTrack>? _audioView;
+    private IReadOnlyList<MediaTrack>? _subtitleView;
 
-    public IReadOnlyList<MediaTrack> AudioTracks => _audioTracks;
-    public IReadOnlyList<MediaTrack> SubtitleTracks => _subtitleTracks;
+    // Cached snapshots, rebuilt only when the tracks change. The read-model is rebuilt
+    // on every position tick, and tracks change perhaps twice in a whole film.
+    public IReadOnlyList<MediaTrack> AudioTracks => _audioView ??= [.. _audioTracks];
+    public IReadOnlyList<MediaTrack> SubtitleTracks => _subtitleView ??= [.. _subtitleTracks];
 
     /// <summary>The active audio stream, if the media has any.</summary>
     public MediaTrack? SelectedAudioTrack { get; private set; }
@@ -78,6 +82,8 @@ public sealed class PlaybackSession
             if (track.Kind is TrackKind.Audio) _audioTracks.Add(track);
             else _subtitleTracks.Add(track);
         }
+
+        InvalidateTrackViews();
 
         SelectedAudioTrack = _audioTracks.Count > 0 ? _audioTracks[0] : null;
         SelectedSubtitleTrack = null;
@@ -129,8 +135,15 @@ public sealed class PlaybackSession
     {
         _audioTracks.Clear();
         _subtitleTracks.Clear();
+        InvalidateTrackViews();
         SelectedAudioTrack = null;
         SelectedSubtitleTrack = null;
+    }
+
+    private void InvalidateTrackViews()
+    {
+        _audioView = null;
+        _subtitleView = null;
     }
 
     /// <summary>The backend finished opening the source and reported its duration.</summary>
