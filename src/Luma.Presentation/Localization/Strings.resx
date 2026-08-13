@@ -85,7 +85,7 @@
   <data name="Update.Failed" xml:space="preserve"><value>Update failed: {0}</value><comment>{0} is the error message</comment></data>
 
   <data name="Picker.OpenVideo" xml:space="preserve"><value>Open video</value></data>
-  <data name="Picker.VideoFiles" xml:space="preserve"><value>Video files</value></data>
+  <data name="Picker.MediaFiles" xml:space="preserve"><value>Video and audio</value></data>
   <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Open subtitle</value></data>
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Subtitle files</value></data>
 

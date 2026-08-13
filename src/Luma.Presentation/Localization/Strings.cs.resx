@@ -79,7 +79,7 @@
   <data name="Update.Failed" xml:space="preserve"><value>Aktualizace selhala: {0}</value></data>
 
   <data name="Picker.OpenVideo" xml:space="preserve"><value>Otevřít video</value></data>
-  <data name="Picker.VideoFiles" xml:space="preserve"><value>Video soubory</value></data>
+  <data name="Picker.MediaFiles" xml:space="preserve"><value>Video a zvuk</value></data>
   <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Otevřít titulky</value></data>
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Soubory titulků</value></data>
 
