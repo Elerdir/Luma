@@ -240,46 +240,26 @@
                                            VerticalAlignment="Bottom"
                                            Background="#D912141A" Padding="14,10"
                                            IsVisible="False" />
+
+                    <!-- Fullscreen playlist: over the picture rather than beside it, and
+                         translucent for the same reason the bar is. -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                            IsVisible="{Binding IsFloatingPlaylistVisible}"
+                            Background="#D912141A"
+                            BorderBrush="#3322252E" BorderThickness="1,0,0,0">
+                        <controls:PlaylistPanel />
+                    </Border>
                 </Panel>
             </vlc:VideoView>
         </Panel>
 
-        <!-- Playlist panel -->
-        <Border Grid.Row="0" Grid.Column="1" Name="PlaylistPanel"
-                IsVisible="{Binding IsPlaylistVisible}"
-                Width="280" Background="#12141A"
+        <!-- Docked playlist: beside the video, opaque. Windowed only — in fullscreen the
+             floating copy inside the video overlay takes over. -->
+        <Border Grid.Row="0" Grid.Column="1"
+                IsVisible="{Binding IsDockedPlaylistVisible}"
+                Background="#12141A"
                 BorderBrush="#22252E" BorderThickness="1,0,0,0">
-            <Grid RowDefinitions="Auto,*,Auto">
-
-                <TextBlock Grid.Row="0" Text="{loc:Localize Playlist.Title}" Foreground="#C7CBD2"
-                           FontSize="13" Margin="12,10,12,8" />
-
-                <ListBox Grid.Row="1"
-                         ItemsSource="{Binding Playlist}"
-                         SelectedItem="{Binding SelectedPlaylistItem, Mode=TwoWay}"
-                         Background="Transparent" BorderThickness="0"
-                         DoubleTapped="OnPlaylistDoubleTapped">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:PlaylistItemViewModel">
-                            <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Location}">
-                                <!-- Marks the entry the player is on right now -->
-                                <TextBlock Grid.Column="0" Text="▸" Width="14"
-                                           Foreground="#FF7A45"
-                                           IsVisible="{Binding IsCurrent}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Name}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6"
-                            Margin="12,8,12,10">
-                    <Button Content="{loc:Localize Button.Play}" Command="{Binding PlaySelectedCommand}" />
-                    <Button Content="{loc:Localize Button.Remove}" Command="{Binding RemoveSelectedCommand}" />
-                    <Button Content="{loc:Localize Button.Clear}" Command="{Binding ClearPlaylistCommand}" />
-                </StackPanel>
-            </Grid>
+            <controls:PlaylistPanel />
         </Border>
         <!-- Docked instance: opaque, below the video. -->
         <controls:TransportBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
