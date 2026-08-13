@@ -25,6 +25,14 @@ public sealed record PlayerPreferences
 public sealed record ResumePoint(string Location, TimeSpan Position, TimeSpan Duration)
 {
     /// <summary>
+    /// When this position was last written. Drives expiry — see
+    /// <see cref="ResumePointRetention"/>. Entries loaded from a file written before
+    /// this field existed carry <c>default</c> and are stamped on load.
+    /// </summary>
+    public DateTimeOffset SavedAt { get; init; }
+
+
+    /// <summary>
     /// A position is only worth restoring in the middle of a file: right at the start
     /// there is nothing to resume, and near the end the user has effectively finished.
     /// </summary>

@@ -220,4 +220,67 @@ public class PreferenceTrackerTests
         store.SaveCount.ShouldBeGreaterThan(0);
         store.Current.Volume.ShouldBe(11);
     }
+
+    // ---- Retention ----
+    //
+    // Positions are kept so a film can be resumed, not so the app builds a record of
+    // everything ever watched. These check the list cannot grow without bound.
+
+    private static readonly DateTimeOffset Today = new(2026, 8, 13, 12, 0, 0, TimeSpan.Zero);
+
+    private static ResumePoint Stored(string name, TimeSpan age) =>
+        new(File(name).Location.ToString(), TimeSpan.FromMinutes(10), TimeSpan.FromMinutes(60))
+        {
+            SavedAt = Today - age
+        };
+
+    [Fact]
+    public async Task An_abandoned_position_is_forgotten_rather_than_kept_for_ever()
+    {
+        var store = new FakeSettingsStore<PlayerPreferences>(new PlayerPreferences
+        {
+            ResumePoints = [Stored("recent", TimeSpan.FromDays(2)), Stored("ancient", TimeSpan.FromDays(120))]
+        });
+        var tracker = new PreferenceTracker(new PlayerService(new FakeMediaEngine()), store, () => Today);
+
+        await tracker.RestoreAsync();
+        await tracker.DisposeAsync();
+
+        store.Current.ResumePoints.ShouldHaveSingleItem().Location.ShouldEndWith("recent.mp4");
+    }
+
+    [Fact]
+    public async Task The_stored_list_stays_within_its_limit()
+    {
+        var crowded = Enumerable
+            .Range(0, ResumePointRetention.MaxEntries + 30)
+            .Select(i => Stored($"ep{i}", TimeSpan.FromMinutes(i)))
+            .ToArray();
+        var store = new FakeSettingsStore<PlayerPreferences>(
+            new PlayerPreferences { ResumePoints = crowded });
+        var tracker = new PreferenceTracker(new PlayerService(new FakeMediaEngine()), store, () => Today);
+
+        await tracker.RestoreAsync();
+        await tracker.DisposeAsync();
+
+        store.Current.ResumePoints.Count.ShouldBe(ResumePointRetention.MaxEntries);
+    }
+
+    [Fact]
+    public async Task Positions_saved_before_expiry_existed_are_not_thrown_away()
+    {
+        // No SavedAt: exactly what a file written by an earlier build looks like.
+        var legacy = new ResumePoint(
+            File("old").Location.ToString(), TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(90));
+        var store = new FakeSettingsStore<PlayerPreferences>(
+            new PlayerPreferences { ResumePoints = [legacy] });
+        var tracker = new PreferenceTracker(new PlayerService(new FakeMediaEngine()), store, () => Today);
+
+        await tracker.RestoreAsync();
+        await tracker.DisposeAsync();
+
+        var kept = store.Current.ResumePoints.ShouldHaveSingleItem();
+        kept.Location.ShouldEndWith("old.mp4");
+        kept.SavedAt.ShouldBe(Today); // starts ageing from now
+    }
 }

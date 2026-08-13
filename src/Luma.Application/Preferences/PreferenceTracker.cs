@@ -16,6 +16,7 @@ public sealed class PreferenceTracker : IAsyncDisposable
 {
     private readonly IPlayer _player;
     private readonly ISettingsStore<PlayerPreferences> _store;
+    private readonly Func<DateTimeOffset> _now;
     private readonly Lock _gate = new();
 
     private PlayerPreferences _preferences = new();
@@ -32,10 +33,18 @@ public sealed class PreferenceTracker : IAsyncDisposable
     private bool _restored;
     private bool _disposed;
 
-    public PreferenceTracker(IPlayer player, ISettingsStore<PlayerPreferences> store)
+    /// <param name="now">
+    /// Clock used to date and expire resume points. Injectable so retention can be
+    /// tested without waiting ninety days.
+    /// </param>
+    public PreferenceTracker(
+        IPlayer player,
+        ISettingsStore<PlayerPreferences> store,
+        Func<DateTimeOffset>? now = null)
     {
         _player = player ?? throw new ArgumentNullException(nameof(player));
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _now = now ?? (() => DateTimeOffset.UtcNow);
     }
 
 
@@ -52,11 +61,19 @@ public sealed class PreferenceTracker : IAsyncDisposable
 
         var loaded = await _store.LoadAsync(cancellationToken).ConfigureAwait(false);
 
+        var now = _now();
+
         lock (_gate)
         {
             _preferences = loaded;
             _resumePoints.Clear();
-            foreach (var point in loaded.ResumePoints)
+
+            // Stamp first, then expire: a file written before positions were dated must
+            // keep them rather than have them all read as ninety days old.
+            var dated = loaded.ResumePoints
+                .Select(point => ResumePointRetention.StampIfUndated(point, now));
+
+            foreach (var point in ResumePointRetention.Apply(dated, now))
                 _resumePoints[point.Location] = point;
         }
 
@@ -138,7 +155,7 @@ public sealed class PreferenceTracker : IAsyncDisposable
             return;
 
         var key = Key(source);
-        var point = new ResumePoint(key, position, duration);
+        var point = new ResumePoint(key, position, duration) { SavedAt = _now() };
 
         if (point.IsWorthResuming)
             _resumePoints[key] = point;
@@ -156,7 +173,9 @@ public sealed class PreferenceTracker : IAsyncDisposable
             RecordResumePoint(_currentSource, _currentPosition, _currentDuration);
             toSave = _preferences with
             {
-                ResumePoints = [.. _resumePoints.Values]
+                // Trimmed on the way out, so the file never grows past the working set
+                // however long the app has been in use.
+                ResumePoints = ResumePointRetention.Apply(_resumePoints.Values, _now())
             };
         }
 
