@@ -89,10 +89,15 @@ public partial class App : Avalonia.Application
                 // thread — so the file work is pushed onto the thread pool first. Awaiting
                 // it directly here would deadlock the moment a continuation asked to
                 // resume on the dispatcher we are busy blocking.
+                //
+                // Each step is on its own: a full disk or a locked file is not a reason to
+                // show a crash on the way out, and it must not stop the later steps from
+                // running. Position in the film goes first, because that is the one worth
+                // saving — window geometry is a convenience.
                 Task.Run(async () =>
                 {
-                    await placementStore.SaveAsync(placement);
-                    await preferences.DisposeAsync();
+                    await SaveQuietlyAsync(() => preferences.DisposeAsync().AsTask());
+                    await SaveQuietlyAsync(() => placementStore.SaveAsync(placement));
                 }).GetAwaiter().GetResult();
 
                 if (player is IAsyncDisposable disposable)
@@ -101,5 +106,28 @@ public partial class App : Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Run one shutdown write, swallowing anything it throws.
+    ///
+    /// Reads are already tolerant — a corrupt settings file yields defaults rather than
+    /// refusing to start — but writes were not, and the only place that called them
+    /// unguarded was the one place with nowhere to report to. An exception escaping
+    /// <c>ShutdownRequested</c> takes the process down with a crash dialog, and takes the
+    /// remaining shutdown work with it.
+    /// </summary>
+    private static async Task SaveQuietlyAsync(Func<Task> write)
+    {
+        try
+        {
+            await write().ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Nothing sensible to do at this point: the window is already going away, so
+            // there is nobody left to tell. Losing the last position or the window size
+            // is a far smaller cost than crashing on the way out.
+        }
     }
 }
