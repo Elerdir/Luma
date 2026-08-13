@@ -56,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Report matrix result
+        env:
+          RESULT: ${{ needs.checks.result }}
         run: |
-          echo "checks: ${{ needs.checks.result }}"
-          [ "${{ needs.checks.result }}" = "success" ]
+          echo "checks: $RESULT"
+          [ "$RESULT" = "success" ]
