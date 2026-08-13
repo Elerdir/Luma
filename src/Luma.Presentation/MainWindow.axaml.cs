@@ -143,17 +143,20 @@ public partial class MainWindow : Window
     private DateTime _lastFullscreenToggle = DateTime.MinValue;
 
     /// <summary>
-    /// Whether an event came from inside the floating controls. They sit inside the
-    /// video overlay, so their clicks bubble to the handlers watching the video —
-    /// without this, double-clicking Play would also toggle fullscreen and
-    /// right-clicking the seek bar would open the video's menu.
+    /// Whether an event came from inside the chrome floating over the picture — the
+    /// transport bar or the playlist. Both sit inside the video overlay, so their clicks
+    /// bubble to the handlers watching the video: without this, double-clicking Play
+    /// would also toggle fullscreen and right-clicking a playlist row would open the
+    /// video's menu.
     /// </summary>
-    private static bool CameFromTransportBar(object? source) =>
-        source is Visual visual && visual.FindAncestorOfType<TransportBar>() is not null;
+    private static bool CameFromChrome(object? source) =>
+        source is Visual visual &&
+        (visual.FindAncestorOfType<TransportBar>() is not null ||
+         visual.FindAncestorOfType<PlaylistPanel>() is not null);
 
     private void OnVideoAreaDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (CameFromTransportBar(e.Source))
+        if (CameFromChrome(e.Source))
             return;
 
         // VideoView hosts the overlay in a separate floating window and forwards its
@@ -179,15 +182,6 @@ public partial class MainWindow : Window
         var overlay = this.FindControl<Panel>("VideoOverlay");
         if (overlay is not null)
             overlay.DataContext = DataContext;
-    }
-
-    /// <summary>Double-clicking a playlist row plays it, the usual convention.</summary>
-    private void OnPlaylistDoubleTapped(object? sender, TappedEventArgs e)
-    {
-        if (DataContext is MainViewModel vm && vm.PlaySelectedCommand.CanExecute(null))
-            vm.PlaySelectedCommand.Execute(null);
-
-        e.Handled = true;
     }
 
     // ---- Keyboard shortcuts ----
@@ -333,7 +327,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnVideoPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (e.InitialPressMouseButton is not MouseButton.Right || CameFromTransportBar(e.Source))
+        if (e.InitialPressMouseButton is not MouseButton.Right || CameFromChrome(e.Source))
             return;
 
         var overlay = this.FindControl<Panel>("VideoOverlay");
@@ -362,6 +356,10 @@ public partial class MainWindow : Window
             return;
 
         _isFullscreen = on;
+
+        // The playlist swaps between its docked and floating instance on this.
+        if (DataContext is MainViewModel vm)
+            vm.IsFullscreen = on;
 
         var docked = this.FindControl<TransportBar>("DockedTransport");
 
@@ -468,9 +466,12 @@ public partial class MainWindow : Window
             return;
 
         // Keep the bar up while the pointer rests on it, otherwise it vanishes from
-        // under a user who is reaching for the seek slider.
+        // under a user who is reaching for the seek slider. The same goes for an open
+        // playlist: someone who just asked for it is about to click a row, and taking
+        // the cursor away mid-reach is the same rudeness.
         var transport = this.FindControl<TransportBar>("FullscreenTransport");
-        if (transport?.IsPointerOver == true)
+        if (transport?.IsPointerOver == true ||
+            (DataContext is MainViewModel { IsFloatingPlaylistVisible: true }))
         {
             _idleTimer.Start();
             return;

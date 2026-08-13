@@ -80,7 +80,26 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(RepeatLabel))]
     private RepeatMode _repeat;
 
-    [ObservableProperty] private bool _isPlaylistVisible;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDockedPlaylistVisible))]
+    [NotifyPropertyChangedFor(nameof(IsFloatingPlaylistVisible))]
+    private bool _isPlaylistVisible;
+
+    /// <summary>
+    /// Whether the window is fullscreen. Set by the window — fullscreen is window state,
+    /// not player state — but the playlist needs to know, because which of its two
+    /// instances is on screen depends on it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDockedPlaylistVisible))]
+    [NotifyPropertyChangedFor(nameof(IsFloatingPlaylistVisible))]
+    private bool _isFullscreen;
+
+    /// <summary>The playlist beside the video: windowed only.</summary>
+    public bool IsDockedPlaylistVisible => IsPlaylistVisible && !IsFullscreen;
+
+    /// <summary>The playlist over the video: fullscreen only.</summary>
+    public bool IsFloatingPlaylistVisible => IsPlaylistVisible && IsFullscreen;
 
     /// <summary>
     /// Whether opening one file also loads its folder. Takes effect on the next open —

@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:Luma.Presentation.Localization"
+             xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
+             x:Class="Luma.Presentation.Controls.PlaylistPanel"
+             x:DataType="vm:MainViewModel"
+             Width="280">
+    <!--
+      The playlist, defined once and placed twice: beside the video when windowed, over
+      it when fullscreen. Same reasoning as TransportBar — one definition so the two
+      cannot drift apart, with Background left to the instance so the fullscreen copy
+      can be translucent.
+
+      Before this, fullscreen simply left the docked panel where it was and the film
+      played in what was left of the screen.
+    -->
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <TextBlock Grid.Row="0" Text="{loc:Localize Playlist.Title}" Foreground="#C7CBD2"
+                   FontSize="13" Margin="12,10,12,8" />
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Playlist}"
+                 SelectedItem="{Binding SelectedPlaylistItem, Mode=TwoWay}"
+                 Background="Transparent" BorderThickness="0"
+                 DoubleTapped="OnRowDoubleTapped">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:PlaylistItemViewModel">
+                    <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Location}">
+                        <!-- Marks the entry the player is on right now -->
+                        <TextBlock Grid.Column="0" Text="▸" Width="14"
+                                   Foreground="#FF7A45"
+                                   IsVisible="{Binding IsCurrent}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6"
+                    Margin="12,8,12,10">
+            <Button Content="{loc:Localize Button.Play}" Command="{Binding PlaySelectedCommand}" />
+            <Button Content="{loc:Localize Button.Remove}" Command="{Binding RemoveSelectedCommand}" />
+            <Button Content="{loc:Localize Button.Clear}" Command="{Binding ClearPlaylistCommand}" />
+        </StackPanel>
+    </Grid>
+</UserControl>
