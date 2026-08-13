@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,7 +15,7 @@ using Luma.Presentation.Services;
 
 namespace Luma.Presentation.ViewModels;
 
-public sealed partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IPlayer _player;
     private readonly IFilePicker _filePicker;
@@ -234,9 +235,24 @@ public sealed partial class MainViewModel : ObservableObject
 
         // Text this view-model composes itself is not reached by the XAML localization
         // bindings, so it has to be re-published when the language changes.
-        Localizer.Instance.PropertyChanged += (_, _) => RefreshLocalizedText();
+        Localizer.Instance.PropertyChanged += OnLanguageChanged;
         _player.Changed += OnPlayerChanged;
         Apply(_player.Snapshot);
+    }
+
+    private void OnLanguageChanged(object? sender, PropertyChangedEventArgs e) =>
+        RefreshLocalizedText();
+
+    /// <summary>
+    /// Let go of the two things that outlive this view-model: the player, and the
+    /// localizer — which is a static singleton, so a subscription to it keeps whatever
+    /// subscribed alive for the life of the process. One window never notices; a second
+    /// window would leave the first one still reacting to every language change.
+    /// </summary>
+    public void Dispose()
+    {
+        Localizer.Instance.PropertyChanged -= OnLanguageChanged;
+        _player.Changed -= OnPlayerChanged;
     }
 
     public string PlayPauseGlyph => IsPlaying ? "❚❚" : "▶";

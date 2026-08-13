@@ -100,6 +100,10 @@ public partial class App : Avalonia.Application
                     await SaveQuietlyAsync(() => placementStore.SaveAsync(placement));
                 }).GetAwaiter().GetResult();
 
+                // Before the player goes away: the view-model is subscribed to it, and to
+                // the localizer singleton that outlives everything here.
+                viewModel.Dispose();
+
                 if (player is IAsyncDisposable disposable)
                     disposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
             };

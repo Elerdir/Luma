@@ -62,7 +62,11 @@ public sealed class LibVlcMediaEngine : IMediaEngine
         ArgumentNullException.ThrowIfNull(source);
         ThrowIfDisposed();
 
+        // Owned until the player takes it. Parsing reaches into native code and can fail
+        // in ways beyond the parse result — a cancelled open, a malformed URI — and every
+        // one of those used to leak the native object until a finalizer got round to it.
         var media = new LibVLCSharp.Shared.Media(_libVlc, source.Location);
+        var handedOver = false;
         try
         {
             var status = await media.Parse(
@@ -71,7 +75,6 @@ public sealed class LibVlcMediaEngine : IMediaEngine
 
             if (status is MediaParsedStatus.Failed or MediaParsedStatus.Timeout)
             {
-                media.Dispose();
                 Failed?.Invoke(this, new MediaFailedEventArgs($"Failed to open media ({status})."));
                 return;
             }
@@ -79,6 +82,7 @@ public sealed class LibVlcMediaEngine : IMediaEngine
             var previous = _currentMedia;
             _currentMedia = media;
             _player.Media = media;
+            handedOver = true;
             previous?.Dispose();
 
             var duration = media.Duration > 0
@@ -86,10 +90,10 @@ public sealed class LibVlcMediaEngine : IMediaEngine
                 : TimeSpan.Zero;
             Opened?.Invoke(this, new MediaOpenedEventArgs(duration, ReadTracks(media)));
         }
-        catch (OperationCanceledException)
+        finally
         {
-            media.Dispose();
-            throw;
+            if (!handedOver)
+                media.Dispose();
         }
     }
 
