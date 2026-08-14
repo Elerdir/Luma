@@ -94,95 +94,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # macos-latest is Apple silicon; osx-arm64 is what its users need. Add a matrix
-      # here (and a matching VLC_DMG below) if you also want an Intel build.
-      - name: Publish osx-arm64
-        run: |
-          dotnet publish src/Luma.Presentation/Luma.Presentation.csproj \
-            --configuration Release \
-            --runtime osx-arm64 \
-            --self-contained true \
-            -p:Version="$VERSION" \
-            --output artifacts/publish/osx-arm64
-
-      # The VideoLAN.LibVLC.Mac NuGet package is not usable here: it contains one x64
-      # libvlc.dylib and no plugin directory, so it neither loads on Apple silicon nor
-      # decodes anything. Take the real thing out of the official VLC release, which
-      # ships arm64 binaries and the full plugin set.
-      - name: Fetch libvlc from the official VLC release
-        env:
-          VLC_VERSION: '3.0.21'
-          # Pinned, not fetched alongside the download: get.videolan.org redirects to
-          # community mirrors, and a checksum taken from the same place as the file
-          # proves only that the transfer was intact. This value was read from two
-          # independent mirrors (ftp.sh.cvut.cz, ftp.fau.de) and matches VideoLAN's
-          # published vlc-3.0.21-arm64.dmg.sha256. Bumping VLC_VERSION means replacing
-          # it — the build stops until someone does.
-          VLC_SHA256: '15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044'
-        run: |
-          curl -fsSL -o vlc.dmg \
-            "https://get.videolan.org/vlc/${VLC_VERSION}/macosx/vlc-${VLC_VERSION}-arm64.dmg"
-
-          echo "${VLC_SHA256}  vlc.dmg" | shasum -a 256 -c -
-
-          hdiutil attach vlc.dmg -mountpoint /Volumes/VLC-luma -nobrowse -quiet
-          mkdir -p build/libvlc
-          cp -R /Volumes/VLC-luma/VLC.app/Contents/MacOS/lib     build/libvlc/lib
-          cp -R /Volumes/VLC-luma/VLC.app/Contents/MacOS/plugins build/libvlc/plugins
-          hdiutil detach /Volumes/VLC-luma -quiet
-
-          echo "dylibs:  $(find build/libvlc/lib -name '*.dylib' | wc -l)"
-          echo "plugins: $(find build/libvlc/plugins -name '*.dylib' | wc -l)"
-          test -f build/libvlc/lib/libvlc.dylib
-
-      - name: Build the icon
-        run: |
-          # Downscale from the 1024px source rather than upscaling the 256px one.
-          mkdir -p build/luma.iconset
-          src=src/Luma.Presentation/Assets/luma-1024.png
-          for size in 16 32 128 256 512; do
-            sips -z $size $size "$src" --out "build/luma.iconset/icon_${size}x${size}.png" >/dev/null
-            double=$((size * 2))
-            sips -z $double $double "$src" --out "build/luma.iconset/icon_${size}x${size}@2x.png" >/dev/null
-          done
-          iconutil -c icns build/luma.iconset -o build/luma.icns
-
-      - name: Assemble Luma.app
-        run: |
-          APP=build/Luma.app
-          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-
-          cp -R artifacts/publish/osx-arm64/. "$APP/Contents/MacOS/"
-
-          # LibVLCSharp looks for libvlc next to the executable, and libvlc looks for
-          # its plugins in ./plugins relative to itself. Flattening both into MacOS/
-          # is the layout that satisfies the pair.
-          cp build/libvlc/lib/*.dylib "$APP/Contents/MacOS/"
-          cp -R build/libvlc/plugins  "$APP/Contents/MacOS/plugins"
-
-          cp build/luma.icns "$APP/Contents/Resources/luma.icns"
-          sed "s/VERSION/$VERSION/g" installer/macos/Info.plist > "$APP/Contents/Info.plist"
-
-          chmod +x "$APP/Contents/MacOS/Luma"
-
-          # Ad-hoc signature. Without any signature at all Gatekeeper refuses to run
-          # the bundle outright; with it, users get the usual "unidentified developer"
-          # prompt they can override. Proper notarisation needs a paid Apple
-          # Developer account — see the README.
-          codesign --force --deep --sign - "$APP"
-          codesign --verify --verbose "$APP"
-
-      - name: Build the DMG
-        run: |
-          mkdir -p build/dmg
-          cp -R build/Luma.app build/dmg/
-          ln -s /Applications build/dmg/Applications
-          mkdir -p dist
-          hdiutil create \
-            -volname "Luma $VERSION" \
-            -srcfolder build/dmg \
-            -ov -format UDZO \
-            "dist/Luma-$VERSION-arm64.dmg"
+      # Every step of the packaging lives in the script, not here — the same shape
+      # the Windows job has with instalator.bat. A workflow step is the one place a
+      # build cannot be run from, and the macOS bundle is the one that most needs
+      # trying out by hand.
+      - name: Build the disk image
+        run: ./installer/macos/build-dmg.sh "$VERSION"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

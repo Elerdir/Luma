@@ -153,6 +153,22 @@ It publishes a **self-contained** `win-x64` build first, so the installed app ne
 .NET runtime on the target machine — which is why the MSI is around 110 MB. Pass a
 version to override the one in `Directory.Build.props`: `instalator.bat 1.2.0`.
 
+### macOS build script
+
+`installer/macos/build-dmg.sh` is the counterpart, and produces a disk image in `dist/`:
+
+```bash
+./installer/macos/build-dmg.sh
+```
+
+It publishes `osx-arm64` self-contained, pulls libvlc and its plugins out of the
+official VLC disk image, builds the `.icns`, assembles and ad-hoc signs `Luma.app`,
+and packages it with a symlink to `/Applications`. Pass a version to override
+`Directory.Build.props`: `./installer/macos/build-dmg.sh 1.2.0`.
+
+The release workflow runs this same script, so the bundle can be changed and tried on
+a Mac without pushing a commit to find out.
+
 The script installs the WiX CLI if it is missing, pinned to **5.x**. From v6 onwards WiX
 is gated behind the Open Source Maintenance Fee EULA; accepting that is a licensing
 decision for whoever ships the app, so the build script does not do it on your behalf.
