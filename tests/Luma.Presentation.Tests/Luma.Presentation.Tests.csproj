@@ -20,4 +20,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Luma.Presentation\Luma.Presentation.csproj" />
   </ItemGroup>
+
+  <!--
+    The macOS bundle metadata, copied so MacBundleTests can read the real file rather
+    than a copy that drifts. Nothing in a build or a test run touches Info.plist
+    otherwise, which is precisely why a wrong claim in it survives so long.
+  -->
+  <ItemGroup>
+    <None Include="..\..\installer\macos\Info.plist"
+          Link="macos\Info.plist"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

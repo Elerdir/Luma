@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Bundle metadata for Luma.app. VERSION is substituted by the release workflow.
+  Bundle metadata for Luma.app. VERSION is substituted by installer/macos/build-dmg.sh.
 
   LSMinimumSystemVersion tracks what .NET 10 supports on macOS.
   NSHighResolutionCapable keeps the video surface sharp on Retina displays.
+
+  On the document types below: LSHandlerRank is Alternate throughout, deliberately.
+  Luma offers itself under "Open With" and can be picked in Finder's Get Info, but
+  never takes an extension away from whatever already has it — the same restraint the
+  Windows installer shows, for the same reason.
 -->
 <plist version="1.0">
 <dict>
@@ -52,9 +57,114 @@
             <string>Alternate</string>
             <key>LSItemContentTypes</key>
             <array>
+                <!-- Everything macOS already knows is a film reaches Luma through
+                     these two, whatever its container. -->
                 <string>public.movie</string>
                 <string>public.video</string>
+                <!-- And the three below, which macOS does not declare itself. -->
+                <string>org.matroska.mkv</string>
+                <string>org.webmproject.webm</string>
+                <string>org.xiph.ogv</string>
             </array>
+        </dict>
+        <dict>
+            <!-- Luma plays eight audio formats and stepping through an album is a
+                 supported way to use it, so an audio file should be able to open it.
+                 This entry was missing entirely. -->
+            <key>CFBundleTypeName</key>
+            <string>Audio</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.audio</string>
+                <string>org.xiph.opus</string>
+            </array>
+        </dict>
+    </array>
+
+    <!--
+      Types Luma opens that macOS has no declaration for. "Imported" is the right kind:
+      these are other people's formats, described here only so LaunchServices can match
+      a file to them. Each conforms to public.movie or public.audio, which is what makes
+      the broad entries above cover them too.
+
+      Everything else Luma plays — mp4, mov, avi, mpeg, ts, mp3, flac, wav and the rest —
+      already conforms to public.movie or public.audio through a system declaration, so
+      re-declaring it here would only create a second, competing record for a type this
+      application does not own.
+    -->
+    <key>UTImportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>org.matroska.mkv</string>
+            <key>UTTypeDescription</key>
+            <string>Matroska Video</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.movie</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>mkv</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>org.webmproject.webm</string>
+            <key>UTTypeDescription</key>
+            <string>WebM Video</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.movie</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>webm</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>org.xiph.ogv</string>
+            <key>UTTypeDescription</key>
+            <string>Ogg Video</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.movie</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>ogv</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>org.xiph.opus</string>
+            <key>UTTypeDescription</key>
+            <string>Opus Audio</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.audio</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>opus</string>
+                </array>
+            </dict>
         </dict>
     </array>
 </dict>
