@@ -1,0 +1,16 @@
+# The repository is worked on from Windows, and the macOS packaging script is not.
+# A shell script checked out with CRLF fails on the first line with an error that
+# names a character nobody can see ("\r: command not found"), so pin the ending
+# rather than trusting whatever core.autocrlf happens to be set to.
+*.sh text eol=lf
+
+# The Windows batch files have the opposite requirement: cmd.exe needs CRLF, and a
+# label or a multi-line block read with bare LF misbehaves in ways just as obscure.
+*.bat text eol=crlf
+
+# Binary assets: never touched, never diffed as text.
+*.png binary
+*.ico binary
+*.icns binary
+*.msi binary
+*.dmg binary

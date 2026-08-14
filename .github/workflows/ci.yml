@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -43,6 +43,21 @@ jobs:
       - name: Integration tests
         if: matrix.os == 'windows-latest'
         run: dotnet test --no-build --configuration Release --filter "Category=Integration"
+
+      # The macOS app is only ever published when a release is cut, which is the worst
+      # moment to discover it cannot be. The reference to the Windows libvlc package is
+      # conditioned on the runtime identifier, so publishing for a Mac takes a different
+      # path through the project file than anything else here — and that path had no
+      # check on it at all. Packaging the disk image stays in the release workflow; this
+      # is the part that breaks.
+      - name: Publish check (osx-arm64)
+        if: matrix.os == 'macos-latest'
+        run: |
+          dotnet publish src/Luma.Presentation/Luma.Presentation.csproj \
+            --configuration Release \
+            --runtime osx-arm64 \
+            --self-contained true \
+            --output artifacts/ci-publish
 
   # One status check with a stable name for branch protection to require.
   #
