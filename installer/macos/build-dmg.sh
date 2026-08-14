@@ -57,6 +57,86 @@ publish_dir="artifacts/publish/$rid"
 build_dir="build/macos"
 app="$build_dir/Luma.app"
 dmg="dist/Luma-$version-$arch.dmg"
+entitlements="installer/macos/Luma.entitlements"
+
+# ---- Signing -----------------------------------------------------------------
+#
+# CODESIGN_IDENTITY names a Developer ID Application certificate in the keychain.
+# Without one the bundle is signed ad-hoc, which is the difference between "merely
+# unidentified" and "Gatekeeper refuses outright" — but it is not distributable:
+# only a real identity can be notarised. See the README.
+# Written as two branches rather than an array of options: the bash macOS ships is
+# 3.2, where expanding an empty array under `set -u` is itself an error.
+identity="${CODESIGN_IDENTITY:-}"
+have_identity=yes
+if [ -z "$identity" ]; then
+    identity="-"
+    have_identity=no
+fi
+
+# Sign one library or helper binary. Deliberately not a bundle-wide --deep: Apple
+# documents that as unsuitable for distribution, and it gives no say over what gets
+# signed with what. No entitlements here — they only mean anything on the executable
+# a process is launched from, and codesign is entitled to complain about them
+# anywhere else.
+sign_nested() {
+    if [ "$have_identity" = yes ]; then
+        codesign --force --sign "$identity" --options runtime --timestamp "$1"
+    else
+        codesign --force --sign "$identity" "$1"
+    fi
+}
+
+# Sign the bundle itself: the hardened runtime, which notarisation requires, and the
+# entitlements that let .NET and libvlc survive it.
+#
+# Both only apply with a real identity. An ad-hoc signature cannot be notarised
+# whatever options it carries, so turning the hardened runtime on for a local build
+# would add nothing but a way for it to fail.
+sign_app() {
+    if [ "$have_identity" = yes ]; then
+        codesign --force --sign "$identity" --options runtime \
+            --entitlements "$entitlements" --timestamp "$1"
+    else
+        codesign --force --sign "$identity" "$1"
+    fi
+}
+
+# Sign a bundle from the inside out.
+#
+# A bundle's signature covers its contents, so anything signed after it invalidates
+# it. The 340-odd libraries therefore go first and the bundle last. That is the whole
+# reason this is a loop rather than one command.
+sign_bundle() {
+    local bundle="$1"
+
+    echo "        signing nested code (identity: $identity)"
+    # Everything loadable: libvlc, its plugins, and the native halves of .NET.
+    find "$bundle/Contents/MacOS" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 |
+        while IFS= read -r -d '' library; do
+            sign_nested "$library"
+        done
+
+    # Shipped by a self-contained .NET publish and a Mach-O executable in its own
+    # right, so it needs a signature like everything else.
+    if [ -f "$bundle/Contents/MacOS/createdump" ]; then
+        sign_nested "$bundle/Contents/MacOS/createdump"
+    fi
+
+    echo "        signing the bundle"
+    sign_app "$bundle"
+
+    # --deep --strict is the verification that actually walks the nested code. The
+    # old check looked only at the outer bundle and would have passed over a plugin
+    # signed in the wrong order.
+    codesign --verify --deep --strict --verbose=2 "$bundle"
+
+    # What Gatekeeper will make of it. Ad-hoc fails this by design — the point of
+    # printing it is that the gap is visible in the build log rather than discovered
+    # by whoever downloads the disk image.
+    echo "        Gatekeeper assessment:"
+    spctl --assess --type exec --verbose=4 "$bundle" 2>&1 | sed 's/^/          /' || true
+}
 
 echo
 echo "=== Luma disk image ========================================"
@@ -138,11 +218,7 @@ sed "s/VERSION/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plis
 
 chmod +x "$app/Contents/MacOS/Luma"
 
-# Ad-hoc signature. Without any signature at all Gatekeeper refuses to run the
-# bundle outright; with it, the app is merely unidentified. Proper notarisation
-# needs a paid Apple Developer account — see the README.
-codesign --force --deep --sign - "$app"
-codesign --verify --verbose "$app"
+sign_bundle "$app"
 
 # ---- Disk image --------------------------------------------------------------
 echo "[5/5] Building the disk image..."
