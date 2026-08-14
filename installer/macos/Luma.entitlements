@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the hardened runtime, which notarisation requires.
+
+  Every one of these is a hole in the hardened runtime, so each is here for a stated
+  reason rather than because a guide said so:
+
+    allow-jit and allow-unsigned-executable-memory
+      .NET compiles IL to machine code as it runs. Under the hardened runtime that is
+      exactly what is forbidden, and without both of these the app dies at startup
+      rather than misbehaving later.
+
+    disable-library-validation
+      Luma loads libvlc and its 339 plugins, which come out of VideoLAN's own release.
+      Library validation demands that loaded code carry the same Team ID as the app;
+      these never will. The alternative is re-signing all 340 of them with our own
+      identity, which claims authorship of somebody else's binaries.
+
+  Deliberately absent: everything to do with the App Sandbox. Luma is distributed
+  directly, not through the App Store, and a sandboxed video player would have to ask
+  permission for every folder a film might live in.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

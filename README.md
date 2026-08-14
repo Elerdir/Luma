@@ -99,10 +99,37 @@ before the update server exists:
 Repo variable `APP_SLUG` overrides the default slug (`luma`). Uploads land as **drafts**
 — publish them in the UpdateHub admin UI.
 
-The macOS bundle is **ad-hoc signed**. Without any signature Gatekeeper refuses to run
-it at all; with it, users get the usual "unidentified developer" prompt they can
-override via right-click → Open. Proper notarisation needs a paid Apple Developer
-account and is not wired up.
+### macOS signing and notarisation
+
+The bundle is **ad-hoc signed** unless a certificate is configured. Without any
+signature Gatekeeper refuses to run it at all; with an ad-hoc one the application is
+merely unidentified — but on macOS 15 and later that still means the user has to allow
+it in **System Settings › Privacy & Security** after the first refusal. The old
+right-click → Open shortcut no longer works for unnotarised applications.
+
+Everything except the certificate itself is in place. Set these and the release
+workflow signs with a real identity, applies the hardened runtime with
+`installer/macos/Luma.entitlements`, notarises the disk image and staples the ticket:
+
+| Secret | |
+|---|---|
+| `MACOS_CERTIFICATE` | Developer ID Application `.p12`, base64-encoded |
+| `MACOS_CERTIFICATE_PASSWORD` | its export password |
+| `MACOS_SIGNING_IDENTITY` | e.g. `Developer ID Application: Name (TEAMID)` |
+| `MACOS_NOTARY_APPLE_ID` | the Apple ID the developer account belongs to |
+| `MACOS_NOTARY_TEAM_ID` | the ten-character team identifier |
+| `MACOS_NOTARY_PASSWORD` | an app-specific password for that Apple ID |
+
+The certificate needs a paid Apple Developer account, and nothing here can substitute
+for one. Locally, `CODESIGN_IDENTITY` does the same job as the first three secrets:
+
+```bash
+CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./installer/macos/build-dmg.sh
+```
+
+The hardened runtime is applied only when signing with a real identity. An ad-hoc
+signature cannot be notarised whatever options it carries, so turning it on for a
+local build would add nothing but a way for that build to fail.
 
 ## Build & run
 

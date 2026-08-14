@@ -87,6 +87,10 @@ jobs:
     runs-on: macos-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      # Whether the optional steps below run. Resolved here because a step's `if` can
+      # read the env context but not the secrets one.
+      HAS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
+      HAS_NOTARY: ${{ secrets.MACOS_NOTARY_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -94,12 +98,82 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # Signing and notarisation are skipped entirely unless the secrets are set, so
+      # this workflow keeps working with no Apple Developer account — which is where
+      # the project is today. What the account buys is an application that opens by
+      # double-clicking it instead of one the user has to allow in System Settings.
+      #
+      # Required for signing:
+      #   MACOS_CERTIFICATE           Developer ID Application .p12, base64-encoded
+      #   MACOS_CERTIFICATE_PASSWORD  its export password
+      #   MACOS_SIGNING_IDENTITY      e.g. "Developer ID Application: Name (TEAMID)"
+      # Additionally for notarisation:
+      #   MACOS_NOTARY_APPLE_ID       the Apple ID the account belongs to
+      #   MACOS_NOTARY_TEAM_ID        the ten-character team identifier
+      #   MACOS_NOTARY_PASSWORD       an app-specific password for that Apple ID
+      - name: Import the signing certificate
+        if: env.HAS_CERTIFICATE == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          keychain="$RUNNER_TEMP/luma-signing.keychain-db"
+          # Throwaway, and gone with the runner. Never written to the log.
+          password="$(openssl rand -base64 24)"
+
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+
+          certificate="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$certificate"
+          security import "$certificate" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm -f "$certificate"
+
+          # Without this codesign prompts for keychain access, which on a runner with
+          # nobody at the keyboard means hanging until the job times out.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$password" "$keychain" >/dev/null
+
+          security list-keychain -d user -s "$keychain" login.keychain-db
+
+          echo "CODESIGN_IDENTITY=$MACOS_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+
       # Every step of the packaging lives in the script, not here — the same shape
       # the Windows job has with instalator.bat. A workflow step is the one place a
       # build cannot be run from, and the macOS bundle is the one that most needs
       # trying out by hand.
+      #
+      # CODESIGN_IDENTITY is set by the step above when a certificate exists; unset,
+      # the script signs ad-hoc.
       - name: Build the disk image
         run: ./installer/macos/build-dmg.sh "$VERSION"
+
+      # Notarisation is what stops macOS telling the user the app cannot be verified.
+      # It needs the bundle to be signed with a real identity and built with the
+      # hardened runtime, which is why it is gated on the same certificate.
+      - name: Notarise and staple
+        if: env.HAS_CERTIFICATE == 'true' && env.HAS_NOTARY == 'true'
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+        run: |
+          for image in dist/*.dmg; do
+            echo "Submitting $(basename "$image")"
+            xcrun notarytool submit "$image" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$TEAM_ID" \
+              --password "$NOTARY_PASSWORD" \
+              --wait
+
+            # Stapling attaches the ticket to the file, so the first launch works
+            # without asking Apple — including on a machine that happens to be offline.
+            xcrun stapler staple "$image"
+            xcrun stapler validate "$image"
+          done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
