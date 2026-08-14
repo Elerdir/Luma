@@ -135,6 +135,12 @@ The MSI registers Luma as a handler for the media types it plays, so it appears 
 association for itself — on Windows 10 and later an installer cannot make itself the
 default anyway, and doing it without asking would be rude where it can.
 
+On macOS the same restraint is `LSHandlerRank: Alternate` in the bundle: Luma offers
+itself under **Open With** and can be chosen in **Get Info**, and takes nothing.
+Finder does not pass a double-clicked file as an argument the way Explorer does — it
+sends an Apple Event — so Luma listens for that too, both at launch and while it is
+already playing something.
+
 ### Windows helper scripts
 
 `run.bat` builds and starts the app straight from source, for quick testing:

@@ -1,10 +1,11 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Luma.Application;
 using Luma.Application.Abstractions;
 using Luma.Application.Preferences;
-using Luma.Domain.Media;
 using Luma.Infrastructure;
 using Luma.Infrastructure.Media;
 using Luma.Presentation.Services;
@@ -52,12 +53,23 @@ public partial class App : Avalonia.Application
 
             desktop.MainWindow = window;
 
+            // Everything that asks Luma to open a file goes through here, whenever it
+            // asks — see FileOpenQueue.
+            var files = new FileOpenQueue(viewModel.OpenPathsAsync);
+
+            // Windows and Linux hand a double-clicked file over as an argument.
+            _ = files.OfferAsync(ExistingFiles(desktop.Args));
+
+            // macOS does not: Finder sends an Apple Event, which Avalonia surfaces as
+            // an activation. Without this the file associations in Info.plist are
+            // decorative — Luma appears under "Open With", is chosen, and opens empty.
+            // The same event delivers files opened into an already-running Luma.
+            ListenForFileActivation(files);
+
             // The LibVLC player must be attached to the VideoView only once the window is
             // shown and the native video surface exists — otherwise VideoView.Attach() is a
             // no-op and VLC spawns its own separate output window. After attaching, restore
-            // the saved geometry and preferences, then honor any file passed on the command
-            // line (file association / "luma movie.mkv").
-            var startupFile = desktop.Args is { Length: > 0 } args && File.Exists(args[0]) ? args[0] : null;
+            // the saved geometry and preferences, then open whatever was asked for.
             window.Opened += async (_, _) =>
             {
                 window.AttachEngine(engine);
@@ -68,8 +80,10 @@ public partial class App : Avalonia.Application
 
                 await preferences.RestoreAsync();
 
-                if (startupFile is not null)
-                    await player.OpenAsync(MediaSource.FromFile(startupFile));
+                // Only now: volume, repeat mode and the resume point have to be in place
+                // before playback starts, or the film opens at the wrong volume and from
+                // the beginning.
+                await files.ReleaseAsync();
 
                 // Deliberately last and deliberately not awaited into the startup path:
                 // an update check must never delay the window becoming usable, and it
@@ -110,6 +124,47 @@ public partial class App : Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Paths from the command line that name a file that is actually there.
+    ///
+    /// A path that does not exist is dropped rather than reported: it is as likely to
+    /// be a switch Luma does not understand as a mistyped file name, and neither is
+    /// worth an error dialog in front of someone who wanted to watch something.
+    /// </summary>
+    private static string[] ExistingFiles(string[]? args) =>
+        args is null ? [] : [.. args.Where(File.Exists)];
+
+    /// <summary>
+    /// Subscribe to file activation, where the platform has any.
+    ///
+    /// Only macOS raises it today. The feature is asked for rather than assumed, so
+    /// this is a no-op on Windows and Linux instead of a platform check that would
+    /// need revisiting the moment another backend grows the same event.
+    /// </summary>
+    private void ListenForFileActivation(FileOpenQueue files)
+    {
+        if (this.TryGetFeature<IActivatableLifetime>() is not { } activatable)
+            return;
+
+        activatable.Activated += (_, e) =>
+        {
+            if (e is not FileActivatedEventArgs opened)
+                return;
+
+            // A storage item that is not a file on this machine — an iCloud placeholder,
+            // something inside a compressed archive — has no path libvlc could open.
+            var paths = opened.Files
+                .Select(file => file.TryGetLocalPath())
+                .Where(path => !string.IsNullOrEmpty(path))
+                .Select(path => path!)
+                .ToArray();
+
+            // Nothing awaits this: it is an event handler, and the work it starts
+            // reports its own failures through the status line.
+            _ = files.OfferAsync(paths);
+        };
     }
 
     /// <summary>
