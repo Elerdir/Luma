@@ -88,6 +88,9 @@
 
   <!-- Nabídka po kliknutí pravým tlačítkem na video -->
   <data name="Menu.Open" xml:space="preserve"><value>Otevřít…</value></data>
+  <data name="Menu.File" xml:space="preserve"><value>Soubor</value></data>
+  <data name="Menu.Playback" xml:space="preserve"><value>Přehrávání</value></data>
+  <data name="Menu.View" xml:space="preserve"><value>Zobrazení</value></data>
   <data name="Menu.PlayPause" xml:space="preserve"><value>Přehrát / pozastavit</value></data>
   <data name="Menu.Stop" xml:space="preserve"><value>Zastavit</value></data>
   <data name="Menu.Previous" xml:space="preserve"><value>Předchozí</value></data>

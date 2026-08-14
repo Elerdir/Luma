@@ -292,7 +292,8 @@ settings type under the user's application data directory:
 | Platform | Location |
 |---|---|
 | Windows | `%APPDATA%\Luma\` |
-| Linux / macOS | `~/.config/Luma/` |
+| macOS | `~/Library/Application Support/Luma/` |
+| Linux | `~/.config/Luma/` |
 
 Deleting them resets Luma to a fresh install. A missing or corrupt file falls back to
 defaults rather than blocking startup.

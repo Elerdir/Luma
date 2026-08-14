@@ -83,6 +83,30 @@ public sealed class JsonSettingsStoreTests : IDisposable
         System.IO.File.Exists(other.FilePath).ShouldBeTrue();
     }
 
+    /// <summary>
+    /// The default location, which is the one an actual installation uses and the one
+    /// no test would otherwise touch.
+    ///
+    /// macOS is the reason this exists. SpecialFolder.ApplicationData maps to the XDG
+    /// convention on every Unix, .NET included, so Luma wrote its settings to
+    /// ~/.config on a Mac — working, and nowhere a Mac user would look.
+    /// </summary>
+    [Fact]
+    public void The_default_location_is_where_the_platform_keeps_settings()
+    {
+        var path = new JsonSettingsStore<PlayerPreferences>().FilePath;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var expected = OperatingSystem.IsMacOS()
+            ? Path.Combine(home, "Library", "Application Support", "Luma")
+            : Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Luma");
+
+        Path.GetDirectoryName(path).ShouldBe(expected);
+        Path.GetFileName(path).ShouldBe("PlayerPreferences.json");
+    }
+
     private sealed record OtherSettings
     {
         public string Anything { get; init; } = "";

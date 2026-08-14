@@ -255,7 +255,7 @@ cp "$build_dir"/libvlc/lib/*.dylib "$app/Contents/MacOS/"
 cp -R "$build_dir/libvlc/plugins"  "$app/Contents/MacOS/plugins"
 
 cp "$build_dir/luma.icns" "$app/Contents/Resources/luma.icns"
-sed "s/VERSION/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plist"
+sed "s/@VERSION@/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plist"
 
 chmod +x "$app/Contents/MacOS/Luma"
 

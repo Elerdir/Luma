@@ -34,8 +34,8 @@ public class MacBundleTests
         // build-dmg.sh substitutes it. A hard-coded number here would ship every
         // release reporting the same version — including to the update server, which
         // would then never offer an update again.
-        Strings("CFBundleVersion").ShouldContain("VERSION");
-        Strings("CFBundleShortVersionString").ShouldContain("VERSION");
+        Strings("CFBundleVersion").ShouldContain("@VERSION@");
+        Strings("CFBundleShortVersionString").ShouldContain("@VERSION@");
     }
 
     [Fact]
