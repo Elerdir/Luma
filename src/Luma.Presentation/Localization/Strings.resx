@@ -65,7 +65,7 @@
 
   <data name="Subtitles.Off" xml:space="preserve"><value>Subtitles off</value></data>
 
-  <data name="Tooltip.Open" xml:space="preserve"><value>Open files (Ctrl+O)</value></data>
+  <data name="Tooltip.Open" xml:space="preserve"><value>Open files ({0})</value></data>
   <data name="Tooltip.Previous" xml:space="preserve"><value>Previous (P)</value></data>
   <data name="Tooltip.Next" xml:space="preserve"><value>Next (N)</value></data>
   <data name="Tooltip.Stop" xml:space="preserve"><value>Stop (S)</value></data>

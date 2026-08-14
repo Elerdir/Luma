@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using LibVLCSharp.Avalonia;
 using Luma.Infrastructure.Media;
 using Luma.Presentation.Controls;
+using Luma.Presentation.Input;
 using Luma.Presentation.Localization;
 using Luma.Presentation.Services;
 using Luma.Presentation.ViewModels;
@@ -199,13 +200,6 @@ public partial class MainWindow : Window
     // would otherwise swallow are claimed on the way down. Everything else waits for
     // the bubble pass, so a combo box, a slider or the playlist keeps its own arrows.
 
-    /// <summary>
-    /// Keys that a focused control would consume before the window ever saw them.
-    /// Deliberately the shortest possible list: taking a key on the way down means
-    /// taking it away from whatever is focused.
-    /// </summary>
-    private static bool IsClaimedOnTheWayDown(Key key) => key is Key.Space;
-
     private readonly HashSet<TopLevel> _keyboardSurfaces = [];
 
     /// <summary>
@@ -224,7 +218,7 @@ public partial class MainWindow : Window
 
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
     {
-        if (!IsClaimedOnTheWayDown(e.Key))
+        if (!PlayerShortcuts.IsClaimedOnTheWayDown(e.Key))
             return;
 
         e.Handled = HandleShortcut(e);
@@ -249,7 +243,7 @@ public partial class MainWindow : Window
 
     private void OnKeyDownBubble(object? sender, KeyEventArgs e)
     {
-        if (e.Handled || IsClaimedOnTheWayDown(e.Key))
+        if (e.Handled || PlayerShortcuts.IsClaimedOnTheWayDown(e.Key))
             return;
 
         e.Handled = HandleShortcut(e);
@@ -259,6 +253,9 @@ public partial class MainWindow : Window
     /// Run the shortcut for a key, reporting whether anything happened. A key that
     /// could not do anything — Next with nothing to go to — is left unhandled rather
     /// than silently eaten.
+    ///
+    /// Which key means what is <see cref="PlayerShortcuts"/>'s business; this is only
+    /// the wiring from an action to the command that performs it.
     /// </summary>
     private bool HandleShortcut(KeyEventArgs e)
     {
@@ -269,35 +266,28 @@ public partial class MainWindow : Window
         if (e.Source is TextBox)
             return false;
 
-        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-        var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-        var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
-
-        // Ctrl+O is the only shortcut with a modifier of its own; anything else held
-        // down means the user is asking for something that is not ours.
-        if (alt || (control && e.Key is not Key.O))
-            return false;
-
-        return e.Key switch
+        return PlayerShortcuts.For(e.Key, e.KeyModifiers) switch
         {
-            Key.Space or Key.K => Run(vm.PlayPauseCommand),
-            Key.Left => Run(shift ? vm.SeekBackwardLargeCommand : vm.SeekBackwardCommand),
-            Key.Right => Run(shift ? vm.SeekForwardLargeCommand : vm.SeekForwardCommand),
-            Key.Up => Run(vm.VolumeUpCommand),
-            Key.Down => Run(vm.VolumeDownCommand),
-            Key.M => Run(vm.ToggleMuteCommand),
-            Key.S => Run(vm.StopCommand),
-            Key.R => Run(vm.CycleRepeatCommand),
-            Key.L => Run(vm.TogglePlaylistCommand),
-            Key.O when control => Run(vm.OpenCommand),
+            PlayerAction.PlayPause => Run(vm.PlayPauseCommand),
+            PlayerAction.Stop => Run(vm.StopCommand),
+            PlayerAction.SeekBackward => Run(vm.SeekBackwardCommand),
+            PlayerAction.SeekBackwardLarge => Run(vm.SeekBackwardLargeCommand),
+            PlayerAction.SeekForward => Run(vm.SeekForwardCommand),
+            PlayerAction.SeekForwardLarge => Run(vm.SeekForwardLargeCommand),
+            PlayerAction.VolumeUp => Run(vm.VolumeUpCommand),
+            PlayerAction.VolumeDown => Run(vm.VolumeDownCommand),
+            PlayerAction.ToggleMute => Run(vm.ToggleMuteCommand),
+            PlayerAction.CycleRepeat => Run(vm.CycleRepeatCommand),
+            PlayerAction.TogglePlaylist => Run(vm.TogglePlaylistCommand),
+            PlayerAction.Open => Run(vm.OpenCommand),
+            PlayerAction.Next => Run(vm.NextCommand),
+            PlayerAction.Previous => Run(vm.PreviousCommand),
+            PlayerAction.ToggleFullscreen => ToggleFullscreenFromKey(),
 
-            // Next and previous, on both the letters and the keys a hand already rests
-            // near while watching: page down is the next episode in the folder.
-            Key.N or Key.PageDown => Run(vm.NextCommand),
-            Key.P or Key.PageUp => Run(vm.PreviousCommand),
+            // Escape only ever leaves fullscreen. Windowed, it stays unhandled so a
+            // flyout or a dialog can still close on it.
+            PlayerAction.LeaveFullscreen => _isFullscreen && ToggleFullscreenFromKey(),
 
-            Key.F or Key.F11 => ToggleFullscreenFromKey(),
-            Key.Escape when _isFullscreen => ToggleFullscreenFromKey(),
             _ => false
         };
     }

@@ -99,6 +99,25 @@ public sealed class LocalizerTests : IDisposable
         notifications.ShouldBe(1);
     }
 
+    /// <summary>
+    /// Some text has to name something no translation can know. The Open tooltip is the
+    /// case that forced this: it used to spell out "Ctrl+O" in both resource files, which
+    /// is simply the wrong shortcut on a Mac — and a translated string is the last place
+    /// anyone would look for a platform assumption.
+    /// </summary>
+    [Fact]
+    public void A_bound_string_can_carry_a_value_the_translation_does_not_know()
+    {
+        Localizer.Instance.SetLanguage("en");
+        var bound = new LocalizedString("Tooltip.Open", "⌘O");
+
+        bound.Value.ShouldBe("Open files (⌘O)");
+
+        Localizer.Instance.SetLanguage("cs");
+
+        bound.Value.ShouldBe("Otevřít soubory (⌘O)");
+    }
+
     [Fact]
     public void An_unknown_key_returns_the_key_itself()
     {

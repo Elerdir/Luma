@@ -5,6 +5,7 @@
         xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
         xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
         xmlns:loc="clr-namespace:Luma.Presentation.Localization"
+        xmlns:input="clr-namespace:Luma.Presentation.Input"
         xmlns:conv="clr-namespace:Luma.Presentation.Converters"
         xmlns:controls="clr-namespace:Luma.Presentation.Controls"
         xmlns:md="clr-namespace:Luma.Domain.Media;assembly=Luma.Domain"
@@ -49,8 +50,11 @@
                     -->
                     <Panel.ContextFlyout>
                         <MenuFlyout>
+                            <!-- The gesture comes from code because it is not the same
+                                 on every platform: Cmd+O on a Mac, Ctrl+O elsewhere. -->
                             <MenuItem Header="{loc:Localize Menu.Open}"
-                                      Command="{Binding OpenCommand}" InputGesture="Ctrl+O" />
+                                      Command="{Binding OpenCommand}"
+                                      InputGesture="{x:Static input:PlayerShortcuts.OpenGesture}" />
                             <Separator />
 
                             <MenuItem Header="{loc:Localize Menu.PlayPause}"

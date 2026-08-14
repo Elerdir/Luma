@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:Luma.Presentation.Localization"
+             xmlns:input="clr-namespace:Luma.Presentation.Input"
              xmlns:vm="clr-namespace:Luma.Presentation.ViewModels"
              x:Class="Luma.Presentation.Controls.TransportBar"
              x:DataType="vm:MainViewModel">
@@ -56,7 +57,8 @@
                 <!-- Icon rather than a word: it sits among the transport glyphs, and
                      the recent list moved to the right-click menu. -->
                 <Button Content="📂" Command="{Binding OpenCommand}"
-                        ToolTip.Tip="{loc:Localize Tooltip.Open}" />
+                        ToolTip.Tip="{loc:Localize Tooltip.Open,
+                                      Arg={x:Static input:PlayerShortcuts.OpenGestureText}}" />
                 <Button Content="⏮" Command="{Binding PreviousCommand}"
                         ToolTip.Tip="{loc:Localize Tooltip.Previous}" />
                 <Button Content="{Binding PlayPauseGlyph}"
