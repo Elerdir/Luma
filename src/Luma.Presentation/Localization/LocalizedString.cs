@@ -14,17 +14,26 @@ namespace Luma.Presentation.Localization;
 public sealed class LocalizedString : INotifyPropertyChanged
 {
     private readonly string _key;
+    private readonly string? _argument;
 
-    public LocalizedString(string key)
+    public LocalizedString(string key, string? argument = null)
     {
         _key = key;
+        _argument = argument;
 
         // Lives as long as the control it feeds, which for a window's chrome is the
         // lifetime of the app, so there is nothing to unsubscribe from.
         Localizer.Instance.PropertyChanged += OnLanguageChanged;
     }
 
-    public string Value => Localizer.Instance[_key];
+    /// <summary>
+    /// The translated text, with the argument substituted where the translation asks
+    /// for it. An argument exists for text that has to name something the translation
+    /// cannot know — the Open shortcut, which is written differently on a Mac.
+    /// </summary>
+    public string Value => _argument is null
+        ? Localizer.Instance[_key]
+        : Localizer.Instance.Format(_key, _argument);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

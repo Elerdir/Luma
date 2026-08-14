@@ -59,7 +59,7 @@
 
   <data name="Subtitles.Off" xml:space="preserve"><value>Titulky vypnuty</value></data>
 
-  <data name="Tooltip.Open" xml:space="preserve"><value>Otevřít soubory (Ctrl+O)</value></data>
+  <data name="Tooltip.Open" xml:space="preserve"><value>Otevřít soubory ({0})</value></data>
   <data name="Tooltip.Previous" xml:space="preserve"><value>Předchozí (P)</value></data>
   <data name="Tooltip.Next" xml:space="preserve"><value>Další (N)</value></data>
   <data name="Tooltip.Stop" xml:space="preserve"><value>Zastavit (S)</value></data>
