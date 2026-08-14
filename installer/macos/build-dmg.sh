@@ -197,7 +197,22 @@ dotnet publish src/Luma.Presentation/Luma.Presentation.csproj \
 # ---- libvlc ------------------------------------------------------------------
 echo "[2/5] Fetching libvlc $vlc_version from the official VLC release..."
 vlc_dmg="$build_dir/vlc.dmg"
-curl -fsSL -o "$vlc_dmg" \
+
+# get.videolan.org redirects to whichever community mirror it picks, and one of them
+# stalling used to hang the release: a run was cancelled after eleven minutes sitting
+# on a curl that had stopped receiving bytes and would have waited for ever.
+#
+# --speed-limit/--speed-time is the part that matters. A flat timeout has to be
+# generous enough for a slow mirror to finish, which makes it useless against a
+# stalled one; giving up after a minute below 10 kB/s catches the stall in a minute
+# and no legitimate download in any. Each retry goes back through the redirect, so it
+# is a fresh chance at a different mirror.
+curl --fail --location --silent --show-error \
+    --connect-timeout 30 \
+    --speed-limit 10240 --speed-time 60 \
+    --max-time 900 \
+    --retry 3 --retry-delay 5 --retry-all-errors \
+    -o "$vlc_dmg" \
     "https://get.videolan.org/vlc/${vlc_version}/macosx/vlc-${vlc_version}-${arch}.dmg"
 
 echo "${vlc_sha256}  ${vlc_dmg}" | shasum -a 256 -c -
