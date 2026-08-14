@@ -51,6 +51,9 @@ public partial class App : Avalonia.Application
             var viewModel = new MainViewModel(player, picker, updates, launcher, options);
             window.DataContext = viewModel;
 
+            // The menu bar along the top of the screen on macOS; nothing anywhere else.
+            ApplicationMenu.AttachTo(this, viewModel);
+
             desktop.MainWindow = window;
 
             // Everything that asks Luma to open a file goes through here, whenever it

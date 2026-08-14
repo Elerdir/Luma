@@ -94,6 +94,9 @@
 
   <!-- Right-click menu on the video -->
   <data name="Menu.Open" xml:space="preserve"><value>Open…</value></data>
+  <data name="Menu.File" xml:space="preserve"><value>File</value><comment>macOS menu bar</comment></data>
+  <data name="Menu.Playback" xml:space="preserve"><value>Playback</value><comment>macOS menu bar</comment></data>
+  <data name="Menu.View" xml:space="preserve"><value>View</value><comment>macOS menu bar</comment></data>
   <data name="Menu.PlayPause" xml:space="preserve"><value>Play / pause</value></data>
   <data name="Menu.Stop" xml:space="preserve"><value>Stop</value></data>
   <data name="Menu.Previous" xml:space="preserve"><value>Previous</value></data>

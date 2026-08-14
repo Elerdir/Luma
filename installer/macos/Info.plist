@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Bundle metadata for Luma.app. VERSION is substituted by installer/macos/build-dmg.sh.
+  Bundle metadata for Luma.app. @VERSION@ is substituted by installer/macos/build-dmg.sh.
+  Spelled with the delimiters so the substitution cannot reach a word that merely says
+  "version" — MacBundleTests checks the placeholder is still here, because a hard-coded
+  number would report the same version to the update server for ever.
 
   LSMinimumSystemVersion tracks what .NET 10 supports on macOS.
   NSHighResolutionCapable keeps the video surface sharp on Retina displays.
@@ -23,10 +26,10 @@
     <string>com.elerdir.luma</string>
 
     <key>CFBundleVersion</key>
-    <string>VERSION</string>
+    <string>@VERSION@</string>
 
     <key>CFBundleShortVersionString</key>
-    <string>VERSION</string>
+    <string>@VERSION@</string>
 
     <key>CFBundlePackageType</key>
     <string>APPL</string>

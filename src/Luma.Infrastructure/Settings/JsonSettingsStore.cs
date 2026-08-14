@@ -89,10 +89,22 @@ public sealed class JsonSettingsStore<T> : ISettingsStore<T>
         }
     }
 
+    /// <summary>
+    /// Where settings live, per platform.
+    ///
+    /// macOS is spelled out because .NET does not do it: SpecialFolder.ApplicationData
+    /// maps to the XDG convention on every Unix, so Luma was writing to ~/.config on a
+    /// Mac. It worked, and it is not where any Mac user would think to look. Changed
+    /// while nobody has it installed, because afterwards it needs a migration.
+    /// </summary>
     private static string DefaultDirectory() =>
-        Path.Combine(
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.ApplicationData,
-                Environment.SpecialFolderOption.Create),
-            "Luma");
+        OperatingSystem.IsMacOS()
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Library", "Application Support", "Luma")
+            : Path.Combine(
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.ApplicationData,
+                    Environment.SpecialFolderOption.Create),
+                "Luma");
 }
