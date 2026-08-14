@@ -217,8 +217,16 @@ your server:
 ```
 
 On the next start, if the server offers a newer release for this platform, a banner
-appears above the status line. Installing downloads the artifact, verifies it against
-the SHA-256 the server reported, launches it and closes Luma so it can be replaced.
+appears above the status line. Installing downloads the artifact and verifies it
+against the SHA-256 the server reported. What happens next is not the same everywhere:
+
+| Platform | |
+|---|---|
+| Windows | The MSI runs and Luma closes so it can be replaced. Nothing else to do. |
+| macOS | The disk image opens and Luma stays up to say the rest is yours: drag it into **Applications**, replacing the copy there, and reopen it. |
+
+macOS has no equivalent of an installer that replaces the running application, so the
+banner says so rather than claiming an install that never happens.
 
 What arrives is executed — as an MSI asking for administrator rights on Windows — so an
 update is refused outright unless all of this holds:

@@ -7,7 +7,7 @@ namespace Luma.Presentation.Services;
 public sealed class ProcessInstallerLauncher(IClassicDesktopStyleApplicationLifetime lifetime)
     : IInstallerLauncher
 {
-    public void LaunchAndExit(string installerPath)
+    public UpdateHandoff Launch(string installerPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(installerPath);
 
@@ -25,8 +25,17 @@ public sealed class ProcessInstallerLauncher(IClassicDesktopStyleApplicationLife
             throw new InvalidOperationException($"Could not start the installer: {ex.Message}", ex);
         }
 
+        // On macOS what just happened is that a disk image was mounted. Nothing has been
+        // installed and nothing will be: replacing the application in /Applications is
+        // the user's to do, by dragging. Quitting here would close the only window that
+        // could tell them so, leaving a mounted volume and no explanation — so Luma
+        // stays up and says what is left to do.
+        if (!OperatingSystem.IsWindows())
+            return UpdateHandoff.Opened;
+
         // Shut down through the lifetime rather than Environment.Exit, so the normal
         // shutdown path runs and preferences are flushed before the process goes away.
         lifetime.Shutdown();
+        return UpdateHandoff.Installing;
     }
 }
