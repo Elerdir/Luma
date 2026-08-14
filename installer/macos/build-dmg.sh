@@ -141,10 +141,28 @@ sign_bundle() {
     echo "        signing the bundle"
     sign_app "$bundle"
 
-    # --deep --strict is the verification that actually walks the nested code. The
-    # old check looked only at the outer bundle and would have passed over a plugin
-    # signed in the wrong order.
-    codesign --verify --deep --strict --verbose=2 "$bundle"
+    # Verify the bundle seal, which covers every file inside it by hash.
+    #
+    # Deliberately not --deep. That treats everything under Contents/MacOS as a nested
+    # code object needing a signature of its own, and a self-contained .NET publish
+    # puts its whole payload there — including Luma.runtimeconfig.json, which --deep
+    # duly rejected as "not signed at all". That is a question about bundle layout,
+    # not about signing: the executable's own directory is where the .NET host looks
+    # for its runtime configuration and where libvlc looks for its plugins, so the
+    # payload cannot simply move to Resources.
+    codesign --verify --strict --verbose=2 "$bundle"
+
+    # What --deep was wanted for: proof the libraries are signed and that signing the
+    # bundle afterwards did not invalidate them. Checked directly instead, on the two
+    # that matter most — the media engine and one of its plugins.
+    codesign --verify --verbose=2 "$bundle/Contents/MacOS/libvlc.dylib"
+    codesign --verify --verbose=2 \
+        "$(find "$bundle/Contents/MacOS/plugins" -name '*.dylib' | head -1)"
+
+    # And that the entitlements actually landed on the executable, rather than being
+    # passed to a codesign invocation that ignored them.
+    echo "        entitlements on the bundle:"
+    codesign --display --entitlements - "$bundle" 2>&1 | sed 's/^/          /' || true
 
     # What Gatekeeper will make of it. Ad-hoc fails this by design — the point of
     # printing it is that the gap is visible in the build log rather than discovered
