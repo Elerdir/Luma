@@ -143,21 +143,28 @@ sign_bundle() {
 
     # Verify the bundle seal, which covers every file inside it by hash.
     #
-    # Deliberately not --deep. That treats everything under Contents/MacOS as a nested
-    # code object needing a signature of its own, and a self-contained .NET publish
-    # puts its whole payload there — including Luma.runtimeconfig.json, which --deep
-    # duly rejected as "not signed at all". That is a question about bundle layout,
-    # not about signing: the executable's own directory is where the .NET host looks
-    # for its runtime configuration and where libvlc looks for its plugins, so the
-    # payload cannot simply move to Resources.
-    codesign --verify --strict --verbose=2 "$bundle"
+    # Neither --deep nor --strict, and the reason is a real limit rather than a
+    # shortcut. Both treat everything under Contents/MacOS as nested code that must
+    # carry its own signature, and a self-contained .NET publish puts its entire
+    # payload there. Signing the assemblies got past the .dll files and straight onto:
+    #
+    #   Luma.app: code object is not signed at all
+    #   In subcomponent: .../Luma.runtimeconfig.json
+    #
+    # Which is a question about bundle layout, not about signing, and the layout is
+    # not free to change: the .NET host looks for its runtime configuration beside the
+    # executable, and libvlc looks for its plugins beside itself. Moving either into
+    # Resources, where Apple would rather the data lived, breaks both.
+    codesign --verify --verbose=2 "$bundle"
 
-    # What --deep was wanted for: proof the libraries are signed and that signing the
-    # bundle afterwards did not invalidate them. Checked directly instead, on the two
-    # that matter most — the media engine and one of its plugins.
+    # So the ordering — the thing a deep verification was actually wanted for — is
+    # checked directly instead: that the libraries carry valid signatures now that the
+    # bundle has been signed over the top of them. If the order were wrong, these are
+    # what would fail.
     codesign --verify --verbose=2 "$bundle/Contents/MacOS/libvlc.dylib"
-    codesign --verify --verbose=2 \
-        "$(find "$bundle/Contents/MacOS/plugins" -name '*.dylib' | head -1)"
+
+    first_plugin="$(find "$bundle/Contents/MacOS/plugins" -name '*.dylib' | head -1)"
+    codesign --verify --verbose=2 "$first_plugin"
 
     # And that the entitlements actually landed on the executable, rather than being
     # passed to a codesign invocation that ignored them.
