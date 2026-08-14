@@ -111,14 +111,29 @@ sign_bundle() {
     local bundle="$1"
 
     echo "        signing nested code (identity: $identity)"
-    # Everything loadable: libvlc, its plugins, and the native halves of .NET.
-    find "$bundle/Contents/MacOS" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 |
+
+    # Everything codesign counts as code, which is more than it first appears:
+    #
+    #   *.dylib  libvlc, its 339 plugins, and the native halves of .NET
+    #   *.dll    the managed assemblies, including the satellite ones under cs/
+    #
+    # The .dll files are the ones worth explaining. They are PE files, not Mach-O, and
+    # look like data from a distance — but codesign treats the extension as code and
+    # --strict verification refuses a bundle where they are unsigned:
+    #
+    #   Luma.app: code object is not signed at all
+    #   In subcomponent: .../System.Diagnostics.Contracts.dll
+    #
+    # --deep had been signing them all along without ever saying so, and the old
+    # verification was too shallow to notice either way.
+    find "$bundle/Contents/MacOS" -type f \
+        \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) -print0 |
         while IFS= read -r -d '' library; do
             sign_nested "$library"
         done
 
     # Shipped by a self-contained .NET publish and a Mach-O executable in its own
-    # right, so it needs a signature like everything else.
+    # right, so it needs a signature like everything else. No extension to match on.
     if [ -f "$bundle/Contents/MacOS/createdump" ]; then
         sign_nested "$bundle/Contents/MacOS/createdump"
     fi
