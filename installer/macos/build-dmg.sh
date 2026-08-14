@@ -74,93 +74,50 @@ if [ -z "$identity" ]; then
     have_identity=no
 fi
 
-# Sign one library or helper binary. Deliberately not a bundle-wide --deep: Apple
-# documents that as unsuitable for distribution, and it gives no say over what gets
-# signed with what. No entitlements here — they only mean anything on the executable
-# a process is launched from, and codesign is entitled to complain about them
-# anywhere else.
-sign_nested() {
-    if [ "$have_identity" = yes ]; then
-        codesign --force --sign "$identity" --options runtime --timestamp "$1"
-    else
-        codesign --force --sign "$identity" "$1"
-    fi
-}
-
-# Sign the bundle itself: the hardened runtime, which notarisation requires, and the
-# entitlements that let .NET and libvlc survive it.
+# Sign the bundle and everything in it.
 #
-# Both only apply with a real identity. An ad-hoc signature cannot be notarised
-# whatever options it carries, so turning the hardened runtime on for a local build
-# would add nothing but a way for it to fail.
-sign_app() {
-    if [ "$have_identity" = yes ]; then
-        codesign --force --sign "$identity" --options runtime \
-            --entitlements "$entitlements" --timestamp "$1"
-    else
-        codesign --force --sign "$identity" "$1"
-    fi
-}
-
-# Sign a bundle from the inside out.
+# --deep, which Apple's own documentation calls unsuitable for distribution signing.
+# It is the right tool here anyway, and it took three failed release builds to work
+# out why. Signing the nested code by hand and the bundle afterwards — the shape the
+# documentation recommends — does not verify:
 #
-# A bundle's signature covers its contents, so anything signed after it invalidates
-# it. The 340-odd libraries therefore go first and the bundle last. That is the whole
-# reason this is a loop rather than one command.
+#   Luma.app: code object is not signed at all
+#   In subcomponent: .../Luma.runtimeconfig.json
+#
+# Contents/MacOS is, to codesign, a directory of executables: anything in it that is
+# not the main binary is nested code needing a signature of its own, and that includes
+# the JSON. A self-contained .NET publish puts its entire payload there, and the
+# layout is not free to change — the .NET host reads its runtime configuration beside
+# the executable and libvlc looks for its plugins beside itself. --deep signs the lot,
+# which is what makes it work.
+#
+# The documented objection to --deep is that it applies one set of options to every
+# executable it reaches, so a bundle with several that need different entitlements
+# cannot be signed correctly. Luma has one executable. The libraries receive the
+# entitlements too and ignore them, because only the entitlements of the binary a
+# process is launched from are ever consulted.
 sign_bundle() {
     local bundle="$1"
 
-    echo "        signing nested code (identity: $identity)"
+    echo "        signing (identity: $identity)"
 
-    # Everything codesign counts as code, which is more than it first appears:
-    #
-    #   *.dylib  libvlc, its 339 plugins, and the native halves of .NET
-    #   *.dll    the managed assemblies, including the satellite ones under cs/
-    #
-    # The .dll files are the ones worth explaining. They are PE files, not Mach-O, and
-    # look like data from a distance — but codesign treats the extension as code and
-    # --strict verification refuses a bundle where they are unsigned:
-    #
-    #   Luma.app: code object is not signed at all
-    #   In subcomponent: .../System.Diagnostics.Contracts.dll
-    #
-    # --deep had been signing them all along without ever saying so, and the old
-    # verification was too shallow to notice either way.
-    find "$bundle/Contents/MacOS" -type f \
-        \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) -print0 |
-        while IFS= read -r -d '' library; do
-            sign_nested "$library"
-        done
-
-    # Shipped by a self-contained .NET publish and a Mach-O executable in its own
-    # right, so it needs a signature like everything else. No extension to match on.
-    if [ -f "$bundle/Contents/MacOS/createdump" ]; then
-        sign_nested "$bundle/Contents/MacOS/createdump"
+    if [ "$have_identity" = yes ]; then
+        # The hardened runtime is what notarisation requires, and the entitlements are
+        # what let .NET and libvlc survive it. Both only apply with a real identity: an
+        # ad-hoc signature cannot be notarised whatever options it carries, so turning
+        # the hardened runtime on for a local build would add nothing but a way for it
+        # to fail.
+        codesign --force --deep --sign "$identity" \
+            --options runtime --entitlements "$entitlements" --timestamp "$bundle"
+    else
+        codesign --force --deep --sign "$identity" "$bundle"
     fi
 
-    echo "        signing the bundle"
-    sign_app "$bundle"
-
-    # Verify the bundle seal, which covers every file inside it by hash.
-    #
-    # Neither --deep nor --strict, and the reason is a real limit rather than a
-    # shortcut. Both treat everything under Contents/MacOS as nested code that must
-    # carry its own signature, and a self-contained .NET publish puts its entire
-    # payload there. Signing the assemblies got past the .dll files and straight onto:
-    #
-    #   Luma.app: code object is not signed at all
-    #   In subcomponent: .../Luma.runtimeconfig.json
-    #
-    # Which is a question about bundle layout, not about signing, and the layout is
-    # not free to change: the .NET host looks for its runtime configuration beside the
-    # executable, and libvlc looks for its plugins beside itself. Moving either into
-    # Resources, where Apple would rather the data lived, breaks both.
     codesign --verify --verbose=2 "$bundle"
 
-    # So the ordering — the thing a deep verification was actually wanted for — is
-    # checked directly instead: that the libraries carry valid signatures now that the
-    # bundle has been signed over the top of them. If the order were wrong, these are
-    # what would fail.
+    # Nested code, checked directly. This is what a deep verification was wanted for,
+    # and it cannot be had that way — but "did libvlc and its plugins actually get
+    # signed" is answerable on its own, and it is the part that matters.
     codesign --verify --verbose=2 "$bundle/Contents/MacOS/libvlc.dylib"
 
     first_plugin="$(find "$bundle/Contents/MacOS/plugins" -name '*.dylib' | head -1)"
