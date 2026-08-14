@@ -76,6 +76,7 @@
   <data name="Update.Available" xml:space="preserve"><value>K dispozici je Luma {0}</value></data>
   <data name="Update.Downloading" xml:space="preserve"><value>Stahování Luma {0}… {1}</value></data>
   <data name="Update.Starting" xml:space="preserve"><value>Spouštění instalátoru…</value></data>
+  <data name="Update.DragToApplications" xml:space="preserve"><value>Dokončete přetažením Lumy do složky Aplikace a znovu ji spusťte.</value></data>
   <data name="Update.Failed" xml:space="preserve"><value>Aktualizace selhala: {0}</value></data>
 
   <data name="Picker.OpenVideo" xml:space="preserve"><value>Otevřít video</value></data>

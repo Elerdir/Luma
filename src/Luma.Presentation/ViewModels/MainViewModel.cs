@@ -463,7 +463,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             var installer = await _updates.DownloadAsync(update, progress);
 
             UpdateStatus = Localizer.Instance["Update.Starting"];
-            _installerLauncher.LaunchAndExit(installer);
+
+            // Windows does not come back from this — the installer is running and Luma
+            // is closing so it can be replaced. macOS does: all that happened is that a
+            // disk image opened, and the banner has to say what is left to do rather
+            // than leave "Starting the installer…" on screen over a mounted volume.
+            if (_installerLauncher.Launch(installer) is UpdateHandoff.Opened)
+                UpdateStatus = Localizer.Instance["Update.DragToApplications"];
         }
         catch (Exception ex)
         {

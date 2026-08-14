@@ -82,6 +82,7 @@
   <data name="Update.Available" xml:space="preserve"><value>Luma {0} is available</value><comment>{0} is the new version</comment></data>
   <data name="Update.Downloading" xml:space="preserve"><value>Downloading Luma {0}… {1}</value><comment>{0} version, {1} percentage</comment></data>
   <data name="Update.Starting" xml:space="preserve"><value>Starting the installer…</value></data>
+  <data name="Update.DragToApplications" xml:space="preserve"><value>Drag Luma into Applications to finish, then reopen it.</value><comment>macOS: the disk image is open and the copy is the user's to do</comment></data>
   <data name="Update.Failed" xml:space="preserve"><value>Update failed: {0}</value><comment>{0} is the error message</comment></data>
 
   <data name="Picker.OpenVideo" xml:space="preserve"><value>Open video</value></data>
