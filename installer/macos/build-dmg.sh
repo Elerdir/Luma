@@ -2,10 +2,11 @@
 #
 # Builds a macOS disk image for Luma.
 #
-#   ./installer/macos/build-dmg.sh            build at the version in Directory.Build.props
-#   ./installer/macos/build-dmg.sh 1.2.0      build at an explicit version
+#   ./installer/macos/build-dmg.sh              Apple silicon, version from Directory.Build.props
+#   ./installer/macos/build-dmg.sh 1.2.0        an explicit version
+#   ./installer/macos/build-dmg.sh 1.2.0 x64    an Intel build
 #
-# Output: dist/Luma-<version>-arm64.dmg
+# Output: dist/Luma-<version>-<arm64|x64>.dmg
 #
 # This is the macOS counterpart to instalator.bat, and for the same reason: the
 # packaging used to live only inside a workflow step, where the only way to try a
@@ -35,26 +36,54 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
-# macos-latest is Apple silicon, and so is every Mac sold since 2020. An Intel
-# build would need its own VLC disk image and its own pinned checksum.
-rid="osx-arm64"
-arch="arm64"
+# ---- Architecture ------------------------------------------------------------
+#
+# Apple silicon by default, because that is every Mac sold since 2020. Intel is
+# still built and published: the update client asks the server for the architecture
+# it is running on, so a Mac that asks for x64 and finds nothing is told nothing —
+# update checks are deliberately silent, and the user never learns why.
+#
+# VLC names the Intel image "intel64" rather than "x64", which is why the disk image
+# name is tracked separately from the one Luma's own artifacts use.
+target="${2:-arm64}"
+
+case "$target" in
+    arm64)
+        rid="osx-arm64"
+        arch="arm64"
+        vlc_arch="arm64"
+        # Pinned, not fetched alongside the download: get.videolan.org redirects to
+        # community mirrors, and a checksum taken from the same place as the file
+        # proves only that the transfer was intact. Read from two independent
+        # mirrors (ftp.sh.cvut.cz, ftp.fau.de).
+        vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
+        ;;
+    x64)
+        rid="osx-x64"
+        arch="x64"
+        vlc_arch="intel64"
+        # Read from three independent mirrors (ftp.fau.de, mirror.csclub.uwaterloo.ca,
+        # mirrors.tuna.tsinghua.edu.cn), all agreeing.
+        vlc_sha256="d431fd051c3dc7af02bd313c6d05d90cf604b70ed3ec5bba6fd4c49ef3e638d9"
+        ;;
+    *)
+        echo "[ERROR] Unknown architecture '$target'. Use arm64 or x64." >&2
+        exit 1
+        ;;
+esac
 
 # libvlc comes out of the official VLC release rather than from NuGet: the
 # VideoLAN.LibVLC.Mac package contains one x64 libvlc.dylib and no plugin
 # directory, so it can neither load on Apple silicon nor decode anything.
+#
+# Bumping this means replacing both checksums above — the build stops until someone
+# does, which is the point of pinning them.
 vlc_version="3.0.21"
 
-# Pinned, not fetched alongside the download: get.videolan.org redirects to
-# community mirrors, and a checksum taken from the same place as the file proves
-# only that the transfer was intact. This value was read from two independent
-# mirrors (ftp.sh.cvut.cz, ftp.fau.de) and matches VideoLAN's published
-# vlc-3.0.21-arm64.dmg.sha256. Bumping vlc_version means replacing it — the build
-# stops until someone does.
-vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
-
 publish_dir="artifacts/publish/$rid"
-build_dir="build/macos"
+# Per architecture, so building both in turn on one machine does not have the second
+# run signing and packaging whatever the first left behind.
+build_dir="build/macos/$arch"
 app="$build_dir/Luma.app"
 dmg="dist/Luma-$version-$arch.dmg"
 entitlements="installer/macos/Luma.entitlements"
@@ -177,7 +206,7 @@ curl --fail --location --silent --show-error \
     --max-time 900 \
     --retry 3 --retry-delay 5 --retry-all-errors \
     -o "$vlc_dmg" \
-    "https://get.videolan.org/vlc/${vlc_version}/macosx/vlc-${vlc_version}-${arch}.dmg"
+    "https://get.videolan.org/vlc/${vlc_version}/macosx/vlc-${vlc_version}-${vlc_arch}.dmg"
 
 echo "${vlc_sha256}  ${vlc_dmg}" | shasum -a 256 -c -
 

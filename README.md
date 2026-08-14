@@ -82,6 +82,11 @@ brew install --cask vlc
 |---|---|
 | Windows x64 | `Luma-<version>-x64.msi` |
 | macOS arm64 | `Luma-<version>-arm64.dmg` |
+| macOS x64 | `Luma-<version>-x64.dmg` |
+
+Both Mac builds come off the same Apple silicon runner; the Intel one is
+cross-compiled and takes libvlc from VLC's own Intel disk image. Nothing in CI runs
+either of them.
 
 Publishing a GitHub release builds both, attaches them to it, and uploads them to
 UpdateHub. Running the workflow by hand (**Actions → Release → Run workflow**) builds
@@ -196,8 +201,16 @@ version to override the one in `Directory.Build.props`: `instalator.bat 1.2.0`.
 
 It publishes `osx-arm64` self-contained, pulls libvlc and its plugins out of the
 official VLC disk image, builds the `.icns`, assembles and ad-hoc signs `Luma.app`,
-and packages it with a symlink to `/Applications`. Pass a version to override
-`Directory.Build.props`: `./installer/macos/build-dmg.sh 1.2.0`.
+and packages it with a symlink to `/Applications`. A version and an architecture can
+both be given — `arm64` (the default) or `x64`:
+
+```bash
+./installer/macos/build-dmg.sh 1.2.0 x64
+```
+
+The VLC checksum is pinned per architecture and verified before the image is opened.
+Raising the VLC version means replacing both, which is the point: the build stops
+until someone does.
 
 The release workflow runs this same script, so the bundle can be changed and tried on
 a Mac without pushing a commit to find out.
