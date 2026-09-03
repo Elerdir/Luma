@@ -335,6 +335,17 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
             await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public void MovePlaylistItem(int fromIndex, int toIndex)
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _playlist.Move(fromIndex, toIndex);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
+    }
+
     public void ClearPlaylist()
     {
         PlayerSnapshot snapshot;

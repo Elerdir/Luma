@@ -78,6 +78,10 @@
   <data name="Tooltip.LoadSubtitle" xml:space="preserve"><value>Load an external subtitle file</value></data>
   <data name="Tooltip.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Tooltip.DismissUpdate" xml:space="preserve"><value>Hide until next launch</value></data>
+  <data name="Tooltip.MoveUp" xml:space="preserve"><value>Move up</value></data>
+  <data name="Tooltip.MoveDown" xml:space="preserve"><value>Move down</value></data>
+  <data name="Tooltip.SavePlaylist" xml:space="preserve"><value>Save playlist…</value></data>
+  <data name="Tooltip.LoadPlaylist" xml:space="preserve"><value>Load playlist…</value></data>
 
   <data name="Update.Available" xml:space="preserve"><value>Luma {0} is available</value><comment>{0} is the new version</comment></data>
   <data name="Update.Downloading" xml:space="preserve"><value>Downloading Luma {0}… {1}</value><comment>{0} version, {1} percentage</comment></data>
@@ -89,6 +93,9 @@
   <data name="Picker.MediaFiles" xml:space="preserve"><value>Video and audio</value></data>
   <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Open subtitle</value></data>
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Subtitle files</value></data>
+  <data name="Picker.OpenPlaylist" xml:space="preserve"><value>Open playlist</value></data>
+  <data name="Picker.SavePlaylist" xml:space="preserve"><value>Save playlist</value></data>
+  <data name="Picker.PlaylistFiles" xml:space="preserve"><value>Playlist files</value></data>
 
   <data name="Language.System" xml:space="preserve"><value>System</value><comment>Follow the operating system language</comment></data>
 

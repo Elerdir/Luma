@@ -8,4 +8,10 @@ public interface IFilePicker
 
     /// <summary>Prompt the user to pick a subtitle file. Null if cancelled.</summary>
     Task<string?> PickSubtitleAsync();
+
+    /// <summary>Prompt the user to pick a playlist file to load. Null if cancelled.</summary>
+    Task<string?> PickPlaylistOpenAsync();
+
+    /// <summary>Prompt the user for where to save the playlist. Null if cancelled.</summary>
+    Task<string?> PickPlaylistSaveAsync();
 }

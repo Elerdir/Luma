@@ -24,7 +24,8 @@ public sealed class ApplicationMenuTests : IDisposable
     private static MainViewModel ViewModel() =>
         new(new FakePlayer(), new FakeFilePicker(), new FakeUpdateService(),
             new FakeInstallerLauncher(),
-            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()));
+            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()),
+            new FakePlaylistFileStore());
 
     /// <summary>
     /// Every item in the menu, headings included, separators not.

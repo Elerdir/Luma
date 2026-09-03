@@ -309,6 +309,36 @@ public class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Moving_a_later_entry_leaves_playback_alone()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b"), File("c")]);
+        engine.RaiseOpened(Len);
+
+        player.MovePlaylistItem(2, 0); // a,b,c -> c,a,b
+
+        player.Snapshot.PlaylistItems.Select(i => i.DisplayName).ShouldBe(["c.mp4", "a.mp4", "b.mp4"]);
+        player.Snapshot.PlaylistIndex.ShouldBe(1); // "a" is still current, now at index 1
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        engine.Opens.Count.ShouldBe(1); // untouched — no reload
+    }
+
+    [Fact]
+    public async Task Moving_the_playing_entry_keeps_it_playing()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        player.MovePlaylistItem(0, 1); // a,b -> b,a — "a" is still what's loaded
+
+        player.Snapshot.PlaylistIndex.ShouldBe(1);
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        player.Snapshot.Status.ShouldBe(PlaybackStatus.Playing);
+        engine.Opens.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Snapshot_exposes_the_playlist_entries_and_repeat_mode()
     {
         var (player, engine) = Create();

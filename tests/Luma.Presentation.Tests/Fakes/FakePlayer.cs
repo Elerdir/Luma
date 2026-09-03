@@ -20,9 +20,22 @@ public sealed class FakePlayer : IPlayer
     /// <summary>How many handlers are attached.</summary>
     public int Subscribers => Changed?.GetInvocationList().Length ?? 0;
 
+    /// <summary>Every position <see cref="SeekTo"/> was called with, in order.</summary>
+    public List<TimeSpan> SeekCalls { get; } = [];
+
+    /// <summary>Every playlist handed to the multi-source <see cref="OpenAsync(IReadOnlyList{MediaSource}, CancellationToken)"/>.</summary>
+    public List<IReadOnlyList<MediaSource>> OpenedPlaylists { get; } = [];
+
     public void Publish()
     {
         Snapshot = Empty();
+        Changed?.Invoke(this, Snapshot);
+    }
+
+    /// <summary>Publish an explicit snapshot, for tests that care what it carries.</summary>
+    public void Publish(PlayerSnapshot snapshot)
+    {
+        Snapshot = snapshot;
         Changed?.Invoke(this, Snapshot);
     }
 
@@ -32,12 +45,17 @@ public sealed class FakePlayer : IPlayer
         RepeatMode.None, [], [], null, null);
 
     public Task OpenAsync(MediaSource source, CancellationToken ct = default) => Task.CompletedTask;
-    public Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken ct = default)
+    {
+        OpenedPlaylists.Add(sources);
+        return Task.CompletedTask;
+    }
     public void Play() { }
     public void Pause() { }
     public void TogglePlayPause() { }
     public void Stop() { }
-    public void SeekTo(TimeSpan position) { }
+    public void SeekTo(TimeSpan position) => SeekCalls.Add(position);
     public void SetVolume(Volume volume) { }
     public void SetMuted(bool muted) { }
     public void ToggleMute() { }
@@ -52,4 +70,9 @@ public sealed class FakePlayer : IPlayer
     public Task PlayAtAsync(int index, CancellationToken ct = default) => Task.CompletedTask;
     public Task RemoveAtAsync(int index, CancellationToken ct = default) => Task.CompletedTask;
     public void ClearPlaylist() { }
+
+    /// <summary>Every (fromIndex, toIndex) pair <see cref="MovePlaylistItem"/> was called with.</summary>
+    public List<(int From, int To)> MoveCalls { get; } = [];
+
+    public void MovePlaylistItem(int fromIndex, int toIndex) => MoveCalls.Add((fromIndex, toIndex));
 }

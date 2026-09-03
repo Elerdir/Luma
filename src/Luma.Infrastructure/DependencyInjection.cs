@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddSingleton<IMediaEngine>(sp => sp.GetRequiredService<LibVlcMediaEngine>());
         services.AddSingleton<ISubtitleFinder, FileSystemSubtitleFinder>();
         services.AddSingleton<IMediaFolderScanner, FileSystemMediaFolderScanner>();
+        services.AddSingleton<IPlaylistFileStore, M3UPlaylistFileStore>();
         services.AddSingleton<IPlayer>(sp => new PlayerService(
             sp.GetRequiredService<IMediaEngine>(),
             sp.GetRequiredService<ISubtitleFinder>(),

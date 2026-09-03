@@ -42,6 +42,7 @@ other for every status.
   episode. Switchable off in the right-click menu
 - Remembers volume, mute, repeat and window size — and resumes each file where you left
   it
+- Playlist reordering, by dragging a row or the ▲/▼ buttons; save and load as `.m3u`
 
 ## Tech stack
 
@@ -327,13 +328,20 @@ external subtitles, playlist navigation with repeat, fullscreen, and resume-wher
 left-off — all driven through the domain state machine.
 
 Video renders embedded in the main window (verified: no separate VLC output window).
-169 tests: 106 over the domain, 48 over the application layer, 12 over the filesystem
-and settings adapters, and 3 LibVLC integration smoke tests (`Category=Integration`).
+407 tests: 157 over the domain (including FsCheck property-based tests over the playback
+state machine), 70 over the application layer, 107 over the presentation layer
+(including headless-Avalonia tests that exercise `MainViewModel` through a real
+dispatcher, not just its synchronous paths), 70 over the filesystem and settings
+adapters, and 3 LibVLC integration smoke tests (`Category=Integration`).
+
+The window/taskbar icon is generated at multiple sizes (16–256 px) by
+`tools/Luma.IconGen` straight into one `.ico` — see [Icons](#icons).
 
 ### Next up
 
-- Thumbnail seek preview
-- Convert `Assets/luma-icon.svg` to a multi-size `.ico` for the window/taskbar
-- Property-based tests (FsCheck) over the playback state machine
-- Headless Avalonia tests for `MainViewModel`
-- Playlist reordering and `.m3u` save/load
+- Thumbnail seek preview — attempted and set aside for now: LibVLC's `SetVideoCallbacks`
+  memory-rendering path, needed for a second, invisible decode pipeline, crashed the
+  process outright on some inputs in testing here, non-deterministically enough that no
+  ordering or guard tried made it reliable. Worth revisiting behind a hidden real window
+  (the same rendering path `LibVlcMediaEngine` already uses) instead of memory callbacks,
+  which is more code and Windows/macOS-specific but sidesteps the callback path entirely.

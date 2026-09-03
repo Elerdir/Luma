@@ -22,6 +22,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly IUpdateService _updates;
     private readonly IInstallerLauncher _installerLauncher;
     private readonly InterfaceOptionsService _options;
+    private readonly IPlaylistFileStore _playlists;
 
     // Guards against the position slider echoing engine updates back as seeks.
     private bool _applyingSnapshot;
@@ -119,6 +120,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlaySelectedCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCommand))]
+    [NotifyCanExecuteChangedFor(nameof(MoveSelectedUpCommand))]
+    [NotifyCanExecuteChangedFor(nameof(MoveSelectedDownCommand))]
     private PlaylistItemViewModel? _selectedPlaylistItem;
 
     /// <summary>
@@ -219,13 +222,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         IFilePicker filePicker,
         IUpdateService updates,
         IInstallerLauncher installerLauncher,
-        InterfaceOptionsService options)
+        InterfaceOptionsService options,
+        IPlaylistFileStore playlists)
     {
         _player = player;
         _filePicker = filePicker;
         _updates = updates;
         _installerLauncher = installerLauncher;
         _options = options;
+        _playlists = playlists;
 
         // Straight to the field and to the player: going through the property would
         // treat restoring the stored choice as the user making it, and write the file
@@ -413,6 +418,72 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ClearPlaylist() => _player.ClearPlaylist();
+
+    private bool CanMoveSelectedUp => IndexOfSelected() is >= 1;
+
+    [RelayCommand(CanExecute = nameof(CanMoveSelectedUp))]
+    private void MoveSelectedUp()
+    {
+        var index = IndexOfSelected();
+        if (index >= 1)
+            _player.MovePlaylistItem(index, index - 1);
+    }
+
+    private bool CanMoveSelectedDown()
+    {
+        var index = IndexOfSelected();
+        return index >= 0 && index < Playlist.Count - 1;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanMoveSelectedDown))]
+    private void MoveSelectedDown()
+    {
+        var index = IndexOfSelected();
+        if (index >= 0 && index < Playlist.Count - 1)
+            _player.MovePlaylistItem(index, index + 1);
+    }
+
+    /// <summary>
+    /// Reorder by dragging a row rather than the buttons — driven from the playlist
+    /// panel's own pointer handling rather than a bound command, since a drop carries
+    /// both which row moved and where it landed. A drop that resolves to the row's own
+    /// position, or onto something no longer in the list, is quietly ignored.
+    /// </summary>
+    public void MovePlaylistEntry(PlaylistItemViewModel item, int toIndex)
+    {
+        var fromIndex = Playlist.IndexOf(item);
+        if (fromIndex < 0 || toIndex < 0 || toIndex >= Playlist.Count || fromIndex == toIndex)
+            return;
+
+        _player.MovePlaylistItem(fromIndex, toIndex);
+    }
+
+    [RelayCommand]
+    private async Task SavePlaylistAsync()
+    {
+        if (Playlist.Count == 0)
+            return;
+
+        var path = await _filePicker.PickPlaylistSaveAsync();
+        if (path is null)
+            return;
+
+        await RunAsync(() => _playlists.SaveAsync(path, [.. Playlist.Select(i => i.Source)]));
+    }
+
+    [RelayCommand]
+    private async Task LoadPlaylistAsync()
+    {
+        var path = await _filePicker.PickPlaylistOpenAsync();
+        if (path is null)
+            return;
+
+        await RunAsync(async () =>
+        {
+            var items = await _playlists.LoadAsync(path);
+            await _player.OpenAsync(items);
+        });
+    }
 
     [RelayCommand(CanExecute = nameof(CanSeek))]
     private async Task LoadSubtitleAsync()

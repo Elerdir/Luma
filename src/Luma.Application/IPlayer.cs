@@ -77,4 +77,11 @@ public interface IPlayer
 
     /// <summary>Empty the playlist and stop playback.</summary>
     void ClearPlaylist();
+
+    /// <summary>
+    /// Reorder the playlist by moving the entry at <paramref name="fromIndex"/> to
+    /// <paramref name="toIndex"/>. Playback is untouched — this never loads, starts or
+    /// stops anything, even when the moved entry is the one currently playing.
+    /// </summary>
+    void MovePlaylistItem(int fromIndex, int toIndex);
 }
