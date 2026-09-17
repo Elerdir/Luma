@@ -37,11 +37,18 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --filter "Category!=Integration"
 
-      # The integration tests load the native LibVLC libraries, which arrive with the
-      # VideoLAN.LibVLC.Windows package — so Windows is the one runner that can actually
-      # run them. Headless: they construct and dispose the engine, they do not render.
+      # The integration tests load the native LibVLC libraries. On Windows those arrive
+      # with the VideoLAN.LibVLC.Windows package; on macOS nothing is bundled outside a
+      # packaged build, and Luma looks for an installed VLC instead — which is code CI
+      # had no way to exercise until this step existed, and is exactly the code that
+      # decides whether running from source works at all on a Mac.
+      - name: Install VLC (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install --cask vlc
+
+      # Headless either way: they construct and dispose the engine, they do not render.
       - name: Integration tests
-        if: matrix.os == 'windows-latest'
+        if: matrix.os != 'ubuntu-latest'
         run: dotnet test --no-build --configuration Release --filter "Category=Integration"
 
       # The macOS app is only ever published when a release is cut, which is the worst
