@@ -84,23 +84,14 @@ jobs:
 
   macos:
     needs: version
-    # Both architectures. Apple silicon is what anyone buying a Mac since 2020 has,
-    # but the update client asks the server for the architecture it is running on, so
-    # an Intel Mac with nothing published for it is told nothing at all — update
-    # checks are silent by design, and the user would never learn why.
-    #
-    # Cross-compiled: macos-latest is Apple silicon and builds the Intel bundle with
-    # --runtime osx-x64, taking libvlc from VLC's own Intel disk image. Nothing here
-    # runs the result, which is the same as before — see the README on testing.
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [arm64, x64]
-
+    # Apple silicon only — every Mac sold since 2020. An Intel image was published for
+    # a while and is not any more, at a cost worth stating: the update client asks the
+    # server for the architecture it is running on, so an Intel Mac finds nothing and
+    # is told nothing, update checks being silent by design. Nothing ever ran the
+    # Intel build to know whether it worked in the first place.
     runs-on: macos-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      ARCH: ${{ matrix.arch }}
       # Whether the optional steps below run. Resolved here because a step's `if` can
       # read the env context but not the secrets one.
       HAS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
@@ -163,7 +154,7 @@ jobs:
       # CODESIGN_IDENTITY is set by the step above when a certificate exists; unset,
       # the script signs ad-hoc.
       - name: Build the disk image
-        run: ./installer/macos/build-dmg.sh "$VERSION" "$ARCH"
+        run: ./installer/macos/build-dmg.sh "$VERSION"
 
       # Notarisation is what stops macOS telling the user the app cannot be verified.
       # It needs the bundle to be signed with a real identity and built with the
@@ -192,8 +183,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          # One name per leg — two jobs writing the same artifact name is an error.
-          name: luma-macos-${{ matrix.arch }}
+          name: luma-macos-arm64
           path: dist/*.dmg
           if-no-files-found: error
 
@@ -244,8 +234,10 @@ jobs:
           for f in dist/*.msi; do [ -e "$f" ] && upload "$f" windows x64; done
 
           # The architecture comes from the file name — Luma-<version>-<arch>.dmg —
-          # rather than being assumed. Announcing an Intel build as arm64 would offer
-          # every Apple silicon Mac an update it cannot run.
+          # rather than being assumed. Only arm64 is built today, so the two agree;
+          # reading it keeps them agreeing if that ever stops being true, and a Mac
+          # offered an update for an architecture it cannot run gets no second chance
+          # to notice.
           for f in dist/*.dmg; do
             [ -e "$f" ] || continue
             name="$(basename "$f" .dmg)"
