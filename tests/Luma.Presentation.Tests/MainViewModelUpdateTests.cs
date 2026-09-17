@@ -31,7 +31,8 @@ public sealed class MainViewModelUpdateTests : IDisposable
 
     private MainViewModel Create() =>
         new(new FakePlayer(), new FakeFilePicker(), _updates, _launcher,
-            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()));
+            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()),
+            new FakePlaylistFileStore());
 
     private async Task<MainViewModel> WithUpdateFound()
     {

@@ -51,6 +51,7 @@
   <data name="Button.Clear" xml:space="preserve"><value>Vyprázdnit</value></data>
   <data name="Button.Install" xml:space="preserve"><value>Instalovat</value></data>
 
+  <data name="Playlist.NothingToPlay" xml:space="preserve"><value>V tom playlistu není nic, co by šlo přehrát.</value></data>
   <data name="Playlist.Title" xml:space="preserve"><value>Seznam stop</value></data>
 
   <data name="Repeat.Off" xml:space="preserve"><value>Opakování: vypnuto</value></data>
@@ -72,6 +73,10 @@
   <data name="Tooltip.LoadSubtitle" xml:space="preserve"><value>Načíst externí titulky</value></data>
   <data name="Tooltip.Language" xml:space="preserve"><value>Jazyk</value></data>
   <data name="Tooltip.DismissUpdate" xml:space="preserve"><value>Skrýt do příštího spuštění</value></data>
+  <data name="Tooltip.MoveUp" xml:space="preserve"><value>Posunout nahoru</value></data>
+  <data name="Tooltip.MoveDown" xml:space="preserve"><value>Posunout dolů</value></data>
+  <data name="Tooltip.SavePlaylist" xml:space="preserve"><value>Uložit playlist…</value></data>
+  <data name="Tooltip.LoadPlaylist" xml:space="preserve"><value>Načíst playlist…</value></data>
 
   <data name="Update.Available" xml:space="preserve"><value>K dispozici je Luma {0}</value></data>
   <data name="Update.Downloading" xml:space="preserve"><value>Stahování Luma {0}… {1}</value></data>
@@ -83,6 +88,9 @@
   <data name="Picker.MediaFiles" xml:space="preserve"><value>Video a zvuk</value></data>
   <data name="Picker.OpenSubtitle" xml:space="preserve"><value>Otevřít titulky</value></data>
   <data name="Picker.SubtitleFiles" xml:space="preserve"><value>Soubory titulků</value></data>
+  <data name="Picker.OpenPlaylist" xml:space="preserve"><value>Otevřít playlist</value></data>
+  <data name="Picker.SavePlaylist" xml:space="preserve"><value>Uložit playlist</value></data>
+  <data name="Picker.PlaylistFiles" xml:space="preserve"><value>Soubory playlistu</value></data>
 
   <data name="Language.System" xml:space="preserve"><value>Podle systému</value></data>
 

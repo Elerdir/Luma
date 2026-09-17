@@ -34,6 +34,7 @@ public partial class App : Avalonia.Application
             var preferences = provider.GetRequiredService<PreferenceTracker>();
             var placementStore = provider.GetRequiredService<ISettingsStore<WindowPlacement>>();
             var updates = provider.GetRequiredService<IUpdateService>();
+            var playlists = provider.GetRequiredService<IPlaylistFileStore>();
 
             var options = new InterfaceOptionsService(
                 provider.GetRequiredService<ISettingsStore<InterfaceOptions>>());
@@ -48,7 +49,7 @@ public partial class App : Avalonia.Application
             var window = new MainWindow();
             var picker = new StorageFilePicker(window);
             var launcher = new ProcessInstallerLauncher(desktop);
-            var viewModel = new MainViewModel(player, picker, updates, launcher, options);
+            var viewModel = new MainViewModel(player, picker, updates, launcher, options, playlists);
             window.DataContext = viewModel;
 
             // The menu bar along the top of the screen on macOS; nothing anywhere else.

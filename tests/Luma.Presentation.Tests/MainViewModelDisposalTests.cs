@@ -18,7 +18,8 @@ public sealed class MainViewModelDisposalTests : IDisposable
 
     private static MainViewModel Create(FakePlayer player) =>
         new(player, new FakeFilePicker(), new FakeUpdateService(), new FakeInstallerLauncher(),
-            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()));
+            new InterfaceOptionsService(new FakeSettingsStore<InterfaceOptions>()),
+            new FakePlaylistFileStore());
 
     [Fact]
     public void Disposing_lets_go_of_the_player()

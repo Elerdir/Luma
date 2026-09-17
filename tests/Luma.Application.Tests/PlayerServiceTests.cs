@@ -309,6 +309,36 @@ public class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Moving_a_later_entry_leaves_playback_alone()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b"), File("c")]);
+        engine.RaiseOpened(Len);
+
+        player.MovePlaylistItem(2, 0); // a,b,c -> c,a,b
+
+        player.Snapshot.PlaylistItems.Select(i => i.DisplayName).ShouldBe(["c.mp4", "a.mp4", "b.mp4"]);
+        player.Snapshot.PlaylistIndex.ShouldBe(1); // "a" is still current, now at index 1
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        engine.Opens.Count.ShouldBe(1); // untouched — no reload
+    }
+
+    [Fact]
+    public async Task Moving_the_playing_entry_keeps_it_playing()
+    {
+        var (player, engine) = Create();
+        await player.OpenAsync([File("a"), File("b")]);
+        engine.RaiseOpened(Len);
+
+        player.MovePlaylistItem(0, 1); // a,b -> b,a — "a" is still what's loaded
+
+        player.Snapshot.PlaylistIndex.ShouldBe(1);
+        player.Snapshot.MediaName.ShouldBe("a.mp4");
+        player.Snapshot.Status.ShouldBe(PlaybackStatus.Playing);
+        engine.Opens.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Snapshot_exposes_the_playlist_entries_and_repeat_mode()
     {
         var (player, engine) = Create();
@@ -435,5 +465,41 @@ public class PlayerServiceTests
         var (player, engine) = Create();
         await player.DisposeAsync();
         engine.Disposed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// A playlist file holding one film is still a list. Opening it through the path
+    /// that loads a folder alongside a single file would hand back the whole directory,
+    /// which is not what anyone who saved a playlist asked for.
+    /// </summary>
+    [Fact]
+    public async Task A_playlist_of_one_is_not_expanded_to_its_folder()
+    {
+        var engine = new FakeMediaEngine();
+        var only = MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "a.mkv"));
+        var scanner = new FakeMediaFolderScanner(
+            only, MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "b.mkv")));
+
+        await using var player = new PlayerService(engine, folderScanner: scanner);
+
+        await player.OpenPlaylistAsync([only]);
+
+        player.Snapshot.PlaylistCount.ShouldBe(1);
+    }
+
+    /// <summary>And the folder rule still holds for a file somebody opened.</summary>
+    [Fact]
+    public async Task A_single_file_opened_normally_still_loads_its_folder()
+    {
+        var engine = new FakeMediaEngine();
+        var first = MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "a.mkv"));
+        var scanner = new FakeMediaFolderScanner(
+            first, MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "b.mkv")));
+
+        await using var player = new PlayerService(engine, folderScanner: scanner);
+
+        await player.OpenAsync(first);
+
+        player.Snapshot.PlaylistCount.ShouldBe(2);
     }
 }

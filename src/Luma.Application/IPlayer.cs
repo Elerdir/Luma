@@ -23,6 +23,18 @@ public interface IPlayer
     Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replace the playlist with a list somebody chose as a list — the contents of an
+    /// .m3u, say — and start the first entry.
+    ///
+    /// Separate from <see cref="OpenAsync(IReadOnlyList{MediaSource}, CancellationToken)"/>
+    /// because of what that one does with exactly one entry: it treats it as a file
+    /// somebody opened and loads the rest of the folder alongside it. That is right for
+    /// a file and wrong for a list, and a playlist that happens to hold one film is
+    /// still a list. Opening it would otherwise hand back the whole directory.
+    /// </summary>
+    Task OpenPlaylistAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Whether opening a single file also loads the rest of its folder, so the next
     /// episode is one press of Next away. On by default. Turning it off makes a single
     /// file a playlist of one, and next/previous do nothing until more is added.
@@ -77,4 +89,11 @@ public interface IPlayer
 
     /// <summary>Empty the playlist and stop playback.</summary>
     void ClearPlaylist();
+
+    /// <summary>
+    /// Reorder the playlist by moving the entry at <paramref name="fromIndex"/> to
+    /// <paramref name="toIndex"/>. Playback is untouched — this never loads, starts or
+    /// stops anything, even when the moved entry is the one currently playing.
+    /// </summary>
+    void MovePlaylistItem(int fromIndex, int toIndex);
 }

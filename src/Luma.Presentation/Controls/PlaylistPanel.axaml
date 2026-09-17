@@ -20,11 +20,21 @@
         <TextBlock Grid.Row="0" Text="{loc:Localize Playlist.Title}" Foreground="#C7CBD2"
                    FontSize="13" Margin="12,10,12,8" />
 
-        <ListBox Grid.Row="1"
+        <!--
+          Reordering has two routes to the same MovePlaylistItem call: the buttons
+          below (always available, keyboard/screen-reader friendly) and dragging a row
+          (PlaylistPanel.axaml.cs), which is what most people reach for first. Neither
+          is a substitute for the other.
+        -->
+        <ListBox Name="Rows" Grid.Row="1"
                  ItemsSource="{Binding Playlist}"
                  SelectedItem="{Binding SelectedPlaylistItem, Mode=TwoWay}"
                  Background="Transparent" BorderThickness="0"
-                 DoubleTapped="OnRowDoubleTapped">
+                 DoubleTapped="OnRowDoubleTapped"
+                 PointerPressed="OnRowsPointerPressed"
+                 PointerMoved="OnRowsPointerMoved"
+                 PointerReleased="OnRowsPointerReleased"
+                 PointerCaptureLost="OnRowsPointerCaptureLost">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:PlaylistItemViewModel">
                     <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Location}">
@@ -39,11 +49,22 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6"
-                    Margin="12,8,12,10">
-            <Button Content="{loc:Localize Button.Play}" Command="{Binding PlaySelectedCommand}" />
-            <Button Content="{loc:Localize Button.Remove}" Command="{Binding RemoveSelectedCommand}" />
-            <Button Content="{loc:Localize Button.Clear}" Command="{Binding ClearPlaylistCommand}" />
+        <StackPanel Grid.Row="2" Spacing="6" Margin="12,8,12,10">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="{loc:Localize Button.Play}" Command="{Binding PlaySelectedCommand}" />
+                <Button Content="{loc:Localize Button.Remove}" Command="{Binding RemoveSelectedCommand}" />
+                <Button Content="{loc:Localize Button.Clear}" Command="{Binding ClearPlaylistCommand}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Content="▲" Command="{Binding MoveSelectedUpCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.MoveUp}" />
+                <Button Content="▼" Command="{Binding MoveSelectedDownCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.MoveDown}" />
+                <Button Content="💾" Command="{Binding SavePlaylistCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.SavePlaylist}" />
+                <Button Content="📂" Command="{Binding LoadPlaylistCommand}"
+                        ToolTip.Tip="{loc:Localize Tooltip.LoadPlaylist}" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

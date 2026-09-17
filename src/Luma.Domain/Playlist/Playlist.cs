@@ -78,6 +78,43 @@ public sealed class Playlist
     }
 
     /// <summary>
+    /// Move the item at <paramref name="fromIndex"/> to <paramref name="toIndex"/>,
+    /// shifting everything between them over by one. Playback is left exactly where it
+    /// is — <see cref="CurrentIndex"/> is adjusted so it keeps pointing at whichever
+    /// entry was actually current, even when that entry is the one being moved.
+    /// </summary>
+    public void Move(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || fromIndex >= _items.Count)
+            throw new ArgumentOutOfRangeException(nameof(fromIndex));
+        if (toIndex < 0 || toIndex >= _items.Count)
+            throw new ArgumentOutOfRangeException(nameof(toIndex));
+        if (fromIndex == toIndex)
+            return;
+
+        var item = _items[fromIndex];
+        _items.RemoveAt(fromIndex);
+        _items.Insert(toIndex, item);
+        _view = null;
+
+        CurrentIndex = AdjustIndex(CurrentIndex, fromIndex, toIndex);
+    }
+
+    /// <summary>
+    /// Where an index that pointed at some entry ends up once the entry at
+    /// <paramref name="from"/> moves to <paramref name="to"/>. Works on positions alone
+    /// — not on comparing entries — so it holds even when the playlist has the same
+    /// source listed twice.
+    /// </summary>
+    private static int AdjustIndex(int index, int from, int to)
+    {
+        if (index == from) return to;
+        if (from < to && index > from && index <= to) return index - 1;
+        if (from > to && index >= to && index < from) return index + 1;
+        return index;
+    }
+
+    /// <summary>
     /// Advance to the next item honoring <see cref="Repeat"/>.
     /// Returns false when there is nothing further to play.
     /// </summary>

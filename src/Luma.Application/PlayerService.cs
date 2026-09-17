@@ -66,13 +66,20 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         await OpenAsync([source], cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default)
+    public Task OpenAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default) =>
+        OpenCoreAsync(sources, expandToFolder: true, cancellationToken);
+
+    public Task OpenPlaylistAsync(IReadOnlyList<MediaSource> sources, CancellationToken cancellationToken = default) =>
+        OpenCoreAsync(sources, expandToFolder: false, cancellationToken);
+
+    private async Task OpenCoreAsync(
+        IReadOnlyList<MediaSource> sources, bool expandToFolder, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sources);
         if (sources.Count == 0)
             throw new ArgumentException("At least one source is required.", nameof(sources));
 
-        var (entries, startAt) = ExpandToFolder(sources);
+        var (entries, startAt) = expandToFolder ? ExpandToFolder(sources) : (sources, 0);
 
         lock (_gate)
         {
@@ -333,6 +340,17 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
             Stop();
         else
             await LoadCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public void MovePlaylistItem(int fromIndex, int toIndex)
+    {
+        PlayerSnapshot snapshot;
+        lock (_gate)
+        {
+            _playlist.Move(fromIndex, toIndex);
+            snapshot = BuildSnapshot();
+        }
+        Publish(snapshot);
     }
 
     public void ClearPlaylist()

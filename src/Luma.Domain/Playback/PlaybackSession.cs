@@ -205,7 +205,8 @@ public sealed class PlaybackSession
 
     /// <summary>
     /// Backend reported a new position. Tolerant of races: applied only while
-    /// Playing or Paused, and always clamped to [0, Duration].
+    /// Playing or Paused, and clamped to <see cref="Clamp"/>'s rule — never negative,
+    /// and never past <see cref="Duration"/> once it is known.
     /// </summary>
     public void ReportPosition(TimeSpan position)
     {
@@ -214,7 +215,10 @@ public sealed class PlaybackSession
         Position = Clamp(position);
     }
 
-    /// <summary>Seek to a position. Legal only when media is loaded and not loading.</summary>
+    /// <summary>
+    /// Seek to a position. Legal only when media is loaded and not loading. Clamped the
+    /// same way as <see cref="ReportPosition"/> — see <see cref="Clamp"/>.
+    /// </summary>
     public void Seek(TimeSpan position)
     {
         if (Status is PlaybackStatus.NoMedia or PlaybackStatus.Loading or PlaybackStatus.Faulted)
@@ -266,6 +270,13 @@ public sealed class PlaybackSession
     /// <summary>Change playback speed. Legal from any state.</summary>
     public void ChangeRate(PlaybackRate rate) => Rate = rate;
 
+    /// <summary>
+    /// Never negative. Capped at <see cref="Duration"/> once it is known — but a
+    /// network stream can stay open with <see cref="Duration"/> still Zero (unknown)
+    /// for as long as it plays, and capping the position at zero for the whole of that
+    /// would make seeking and position reporting useless for exactly the media this
+    /// exists to support. So the upper bound applies only once there is one.
+    /// </summary>
     private TimeSpan Clamp(TimeSpan position)
     {
         if (position < TimeSpan.Zero) return TimeSpan.Zero;
