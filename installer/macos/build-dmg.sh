@@ -2,11 +2,12 @@
 #
 # Builds a macOS disk image for Luma.
 #
-#   ./installer/macos/build-dmg.sh              Apple silicon, version from Directory.Build.props
+#   ./installer/macos/build-dmg.sh              version from Directory.Build.props
 #   ./installer/macos/build-dmg.sh 1.2.0        an explicit version
-#   ./installer/macos/build-dmg.sh 1.2.0 x64    an Intel build
 #
-# Output: dist/Luma-<version>-<arm64|x64>.dmg
+# Output: dist/Luma-<version>-arm64.dmg
+#
+# Apple silicon only. Luma is not published for Intel Macs.
 #
 # This is the macOS counterpart to instalator.bat, and for the same reason: the
 # packaging used to live only inside a workflow step, where the only way to try a
@@ -36,41 +37,33 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
+# The second argument used to choose an architecture. Refused rather than ignored:
+# a caller still passing "x64" wants an Intel image and would otherwise be handed an
+# Apple silicon one under that name.
+if [ -n "${2:-}" ]; then
+    echo "[ERROR] This script builds for Apple silicon only; '$2' cannot be built." >&2
+    exit 1
+fi
+
 # ---- Architecture ------------------------------------------------------------
 #
-# Apple silicon by default, because that is every Mac sold since 2020. Intel is
-# still built and published: the update client asks the server for the architecture
-# it is running on, so a Mac that asks for x64 and finds nothing is told nothing —
-# update checks are deliberately silent, and the user never learns why.
+# Apple silicon, and only that. Intel was built and published for a while, on the
+# reasoning that the update client asks the server for the architecture it runs on
+# and a Mac that asks for x64 and finds nothing is told nothing at all — update
+# checks are silent by design. That cost stands, and it is accepted: an Intel Mac
+# running an old Luma will not learn there is a newer one. Nothing here was ever
+# run on an Intel Mac to know whether it worked.
 #
-# VLC names the Intel image "intel64" rather than "x64", which is why the disk image
-# name is tracked separately from the one Luma's own artifacts use.
-target="${2:-arm64}"
+# Re-adding it is a revert of the commit that removed it, not a rewrite.
+rid="osx-arm64"
+arch="arm64"
+vlc_arch="arm64"
 
-case "$target" in
-    arm64)
-        rid="osx-arm64"
-        arch="arm64"
-        vlc_arch="arm64"
-        # Pinned, not fetched alongside the download: get.videolan.org redirects to
-        # community mirrors, and a checksum taken from the same place as the file
-        # proves only that the transfer was intact. Read from two independent
-        # mirrors (ftp.sh.cvut.cz, ftp.fau.de).
-        vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
-        ;;
-    x64)
-        rid="osx-x64"
-        arch="x64"
-        vlc_arch="intel64"
-        # Read from three independent mirrors (ftp.fau.de, mirror.csclub.uwaterloo.ca,
-        # mirrors.tuna.tsinghua.edu.cn), all agreeing.
-        vlc_sha256="d431fd051c3dc7af02bd313c6d05d90cf604b70ed3ec5bba6fd4c49ef3e638d9"
-        ;;
-    *)
-        echo "[ERROR] Unknown architecture '$target'. Use arm64 or x64." >&2
-        exit 1
-        ;;
-esac
+# Pinned, not fetched alongside the download: get.videolan.org redirects to
+# community mirrors, and a checksum taken from the same place as the file proves
+# only that the transfer was intact. Read from two independent mirrors
+# (ftp.sh.cvut.cz, ftp.fau.de).
+vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
 
 # libvlc comes out of the official VLC release rather than from NuGet: the
 # VideoLAN.LibVLC.Mac package contains one x64 libvlc.dylib and no plugin
@@ -82,9 +75,6 @@ vlc_version="3.0.21"
 
 publish_dir="artifacts/publish/$rid"
 
-# Per architecture, so building both in turn on one machine does not have the second
-# run signing and packaging whatever the first left behind.
-#
 # Staged outside the repository, because the bundle cannot be signed everywhere a
 # checkout can live. Under a synced folder — iCloud Drive claims Documents by default —
 # the file provider marks .app directories with com.apple.FinderInfo, and it puts the
