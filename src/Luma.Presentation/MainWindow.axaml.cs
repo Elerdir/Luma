@@ -214,6 +214,25 @@ public partial class MainWindow : Window
         surface.AddHandler(KeyDownEvent, OnKeyDownTunnel, RoutingStrategies.Tunnel);
         surface.AddHandler(KeyDownEvent, OnKeyDownBubble, RoutingStrategies.Bubble);
         surface.AddHandler(KeyUpEvent, OnKeyUpTunnel, RoutingStrategies.Tunnel);
+
+        // The set is what makes this idempotent, and it was also what made it leak: a
+        // rebuilt video surface brings a new top-level, the old one stays in the set
+        // with three handlers on it, and neither is ever collected. Forget a surface
+        // once it is gone — which also lets its replacement register, since it is a
+        // different instance and the set would otherwise fill up with the dead.
+        surface.DetachedFromVisualTree += OnKeyboardSurfaceDetached;
+    }
+
+    private void OnKeyboardSurfaceDetached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is not TopLevel surface)
+            return;
+
+        surface.DetachedFromVisualTree -= OnKeyboardSurfaceDetached;
+        surface.RemoveHandler(KeyDownEvent, OnKeyDownTunnel);
+        surface.RemoveHandler(KeyDownEvent, OnKeyDownBubble);
+        surface.RemoveHandler(KeyUpEvent, OnKeyUpTunnel);
+        _keyboardSurfaces.Remove(surface);
     }
 
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)

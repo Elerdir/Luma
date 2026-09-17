@@ -80,6 +80,11 @@ an installed VLC itself — `VLC.app` under either Applications folder, or a Hom
 prefix — and hands libvlc both the libraries and the matching plugin directory. Setting
 `VLC_PLUGIN_PATH` overrides the plugin half.
 
+## Before a release
+
+`RELEASE-CHECKLIST.md` lists the handful of things no test can answer — whether the
+controls are on screen, whether the MSI installs — and why each of them is on the list.
+
 ## Releases
 
 `.github/workflows/release.yml` builds both installers:
