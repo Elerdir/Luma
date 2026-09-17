@@ -74,25 +74,23 @@ public partial class App : Avalonia.Application
             // shown and the native video surface exists — otherwise VideoView.Attach() is a
             // no-op and VLC spawns its own separate output window. After attaching, restore
             // the saved geometry and preferences, then open whatever was asked for.
+            // An async handler on an event is an async void: nothing awaits it, so an
+            // exception that escapes ends the process at launch, before there is a window
+            // to say anything in. Every call below happens to swallow its own failures
+            // today — which is a property of four other files, not of this one, and not
+            // one worth betting the first-run experience on.
             window.Opened += async (_, _) =>
             {
-                window.AttachEngine(engine);
-
-                var placement = await placementStore.LoadAsync();
-                window.ApplyPlacement(placement);
-                viewModel.IsPlaylistVisible = placement.IsPlaylistVisible;
-
-                await preferences.RestoreAsync();
-
-                // Only now: volume, repeat mode and the resume point have to be in place
-                // before playback starts, or the film opens at the wrong volume and from
-                // the beginning.
-                await files.ReleaseAsync();
-
-                // Deliberately last and deliberately not awaited into the startup path:
-                // an update check must never delay the window becoming usable, and it
-                // stays silent when no server is configured.
-                _ = viewModel.CheckForUpdatesAsync();
+                try
+                {
+                    await StartUpAsync(window, engine, placementStore, preferences, viewModel, files);
+                }
+                catch (Exception e)
+                {
+                    // The window is up by now, so there is somewhere to say it.
+                    viewModel.StatusText = Localization.Localizer.Instance.Format(
+                        "Status.Error", e.Message);
+                }
             };
 
             // PlayerService, the engine and the preference tracker are all IAsyncDisposable;
@@ -128,6 +126,36 @@ public partial class App : Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Everything that has to happen once the window exists, in the order it has to
+    /// happen in.
+    /// </summary>
+    private static async Task StartUpAsync(
+        MainWindow window,
+        LibVlcMediaEngine engine,
+        ISettingsStore<WindowPlacement> placementStore,
+        PreferenceTracker preferences,
+        MainViewModel viewModel,
+        FileOpenQueue files)
+    {
+        window.AttachEngine(engine);
+
+        var placement = await placementStore.LoadAsync();
+        window.ApplyPlacement(placement);
+        viewModel.IsPlaylistVisible = placement.IsPlaylistVisible;
+
+        await preferences.RestoreAsync();
+
+        // Only now: volume, repeat mode and the resume point have to be in place before
+        // playback starts, or the film opens at the wrong volume and from the beginning.
+        await files.ReleaseAsync();
+
+        // Deliberately last and deliberately not awaited into the startup path: an
+        // update check must never delay the window becoming usable, and it stays silent
+        // when no server is configured.
+        _ = viewModel.CheckForUpdatesAsync();
     }
 
     /// <summary>

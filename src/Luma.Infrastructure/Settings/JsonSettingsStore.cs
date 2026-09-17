@@ -69,7 +69,13 @@ public sealed class JsonSettingsStore<T> : ISettingsStore<T>
 
             // Write to a sibling first and swap: a crash mid-write then costs the new
             // settings rather than corrupting the ones already saved.
-            var temporary = _path + ".tmp";
+            //
+            // Named per process, because the lock above is not. Two copies of Luma —
+            // easy enough on Windows, where two files opened at once start two of them —
+            // share this file and share nothing that serializes them, so a fixed name
+            // means each writing into the other's half-finished file and the swap
+            // failing on whichever loses.
+            var temporary = $"{_path}.{Environment.ProcessId}.tmp";
             var stream = File.Create(temporary);
             // ConfigureAwait(false) on the disposal too: without it the implicit
             // DisposeAsync resumes on the caller's context, which deadlocks anyone
@@ -81,11 +87,33 @@ public sealed class JsonSettingsStore<T> : ISettingsStore<T>
                     .ConfigureAwait(false);
             }
 
-            File.Move(temporary, _path, overwrite: true);
+            try
+            {
+                File.Move(temporary, _path, overwrite: true);
+            }
+            catch
+            {
+                // Otherwise a failed swap leaves the half-written sibling next to the
+                // settings for ever, under a name nothing will ever look at again.
+                TryDelete(temporary);
+                throw;
+            }
         }
         finally
         {
             _fileLock.Release();
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Nothing to be done, and the caller has a real failure to report already.
         }
     }
 

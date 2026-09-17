@@ -2,11 +2,12 @@
 #
 # Builds a macOS disk image for Luma.
 #
-#   ./installer/macos/build-dmg.sh              Apple silicon, version from Directory.Build.props
+#   ./installer/macos/build-dmg.sh              version from Directory.Build.props
 #   ./installer/macos/build-dmg.sh 1.2.0        an explicit version
-#   ./installer/macos/build-dmg.sh 1.2.0 x64    an Intel build
 #
-# Output: dist/Luma-<version>-<arm64|x64>.dmg
+# Output: dist/Luma-<version>-arm64.dmg
+#
+# Apple silicon only. Luma is not published for Intel Macs.
 #
 # This is the macOS counterpart to instalator.bat, and for the same reason: the
 # packaging used to live only inside a workflow step, where the only way to try a
@@ -36,41 +37,33 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
+# The second argument used to choose an architecture. Refused rather than ignored:
+# a caller still passing "x64" wants an Intel image and would otherwise be handed an
+# Apple silicon one under that name.
+if [ -n "${2:-}" ]; then
+    echo "[ERROR] This script builds for Apple silicon only; '$2' cannot be built." >&2
+    exit 1
+fi
+
 # ---- Architecture ------------------------------------------------------------
 #
-# Apple silicon by default, because that is every Mac sold since 2020. Intel is
-# still built and published: the update client asks the server for the architecture
-# it is running on, so a Mac that asks for x64 and finds nothing is told nothing —
-# update checks are deliberately silent, and the user never learns why.
+# Apple silicon, and only that. Intel was built and published for a while, on the
+# reasoning that the update client asks the server for the architecture it runs on
+# and a Mac that asks for x64 and finds nothing is told nothing at all — update
+# checks are silent by design. That cost stands, and it is accepted: an Intel Mac
+# running an old Luma will not learn there is a newer one. Nothing here was ever
+# run on an Intel Mac to know whether it worked.
 #
-# VLC names the Intel image "intel64" rather than "x64", which is why the disk image
-# name is tracked separately from the one Luma's own artifacts use.
-target="${2:-arm64}"
+# Re-adding it is a revert of the commit that removed it, not a rewrite.
+rid="osx-arm64"
+arch="arm64"
+vlc_arch="arm64"
 
-case "$target" in
-    arm64)
-        rid="osx-arm64"
-        arch="arm64"
-        vlc_arch="arm64"
-        # Pinned, not fetched alongside the download: get.videolan.org redirects to
-        # community mirrors, and a checksum taken from the same place as the file
-        # proves only that the transfer was intact. Read from two independent
-        # mirrors (ftp.sh.cvut.cz, ftp.fau.de).
-        vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
-        ;;
-    x64)
-        rid="osx-x64"
-        arch="x64"
-        vlc_arch="intel64"
-        # Read from three independent mirrors (ftp.fau.de, mirror.csclub.uwaterloo.ca,
-        # mirrors.tuna.tsinghua.edu.cn), all agreeing.
-        vlc_sha256="d431fd051c3dc7af02bd313c6d05d90cf604b70ed3ec5bba6fd4c49ef3e638d9"
-        ;;
-    *)
-        echo "[ERROR] Unknown architecture '$target'. Use arm64 or x64." >&2
-        exit 1
-        ;;
-esac
+# Pinned, not fetched alongside the download: get.videolan.org redirects to
+# community mirrors, and a checksum taken from the same place as the file proves
+# only that the transfer was intact. Read from two independent mirrors
+# (ftp.sh.cvut.cz, ftp.fau.de).
+vlc_sha256="15dd65bf6489da9ec6a67f5585c74c40a58993acff41a82958a916dd74178044"
 
 # libvlc comes out of the official VLC release rather than from NuGet: the
 # VideoLAN.LibVLC.Mac package contains one x64 libvlc.dylib and no plugin
@@ -81,9 +74,19 @@ esac
 vlc_version="3.0.21"
 
 publish_dir="artifacts/publish/$rid"
-# Per architecture, so building both in turn on one machine does not have the second
-# run signing and packaging whatever the first left behind.
-build_dir="build/macos/$arch"
+
+# Staged outside the repository, because the bundle cannot be signed everywhere a
+# checkout can live. Under a synced folder — iCloud Drive claims Documents by default —
+# the file provider marks .app directories with com.apple.FinderInfo, and it puts the
+# attribute back the moment codesign creates the bundle it is signing. codesign then
+# refuses it ("resource fork, Finder information, or similar detritus not allowed"),
+# and clearing the attribute first does not help: the race is with codesign itself.
+#
+# Nothing is lost by staging elsewhere — the disk image is the artifact, and it still
+# lands in dist/. LUMA_BUILD_DIR overrides this for anyone who wants the intermediate
+# Luma.app somewhere they can look at it.
+build_root="${LUMA_BUILD_DIR:-${TMPDIR:-/tmp}/luma-build}"
+build_dir="$build_root/$arch"
 app="$build_dir/Luma.app"
 dmg="dist/Luma-$version-$arch.dmg"
 entitlements="installer/macos/Luma.entitlements"
@@ -127,6 +130,14 @@ fi
 # process is launched from are ever consulted.
 sign_bundle() {
     local bundle="$1"
+
+    # codesign refuses a bundle carrying Finder information or a resource fork, and a
+    # checkout under an iCloud-synced folder — Documents, by default — collects those
+    # without anyone asking for them. The attributes belong to the copy, never to the
+    # build, so clearing them loses nothing and turns a confusing late failure
+    # ("resource fork, Finder information, or similar detritus not allowed") into a
+    # build that simply works wherever the repository happens to live.
+    xattr -cr "$bundle"
 
     echo "        signing (identity: $identity)"
 
@@ -254,6 +265,46 @@ cp -R "$publish_dir/." "$app/Contents/MacOS/"
 cp "$build_dir"/libvlc/lib/*.dylib "$app/Contents/MacOS/"
 cp -R "$build_dir/libvlc/plugins"  "$app/Contents/MacOS/plugins"
 
+# libvlc.dylib asks for @rpath/libvlccore.dylib, and inside VLC.app the run path that
+# resolves it belongs to VLC's own executable. Here the executable is the .NET host,
+# which has no reason to carry one — so the pair is copied across intact and then fails
+# to load, with dyld looking in /usr/local/lib and /usr/lib for a library sitting right
+# beside the one that asked for it.
+#
+# @loader_path on the libraries themselves is the answer that does not depend on who
+# loads them: a plain dlopen from the host resolves, and so would one from anywhere
+# else. The plugins ask for libvlccore the same way, but they are opened by libvlccore
+# once it is already in the process, and dyld satisfies them from it.
+# VLC ships a cache of its plugin descriptors so that starting up does not mean opening
+# all three hundred of them. It is keyed on each plugin's path and modification time, and
+# signing the bundle rewrites every one of those plugins — so by the time this bundle is
+# finished the cache describes files that no longer match, and libvlc says so:
+#
+#   main libvlc error: stale plugins cache: modified .../libtospdif_plugin.dylib
+#
+# 337 of those lines at every launch, and the scan it was meant to avoid happens anyway.
+# Regenerating it after signing is not open to us either: vlc-cache-gen is not in the
+# VLC download, and a file rewritten after codesign would break the bundle's seal.
+#
+# So it goes. Startup is exactly as fast as it already was — the cache was being thrown
+# away regardless — and what is left is a quarter of a megabyte smaller and quiet.
+rm -f "$app/Contents/MacOS/plugins/plugins.dat"
+
+echo "        patching the run path onto libvlc..."
+for dylib in "$app"/Contents/MacOS/libvlc*.dylib; do
+    install_name_tool -add_rpath @loader_path "$dylib" 2>/dev/null
+done
+
+# Proof, rather than the assumption that the loop above did anything: the failure it
+# fixes is invisible until the application is launched, and a silent install_name_tool
+# would ship a bundle that crashes on startup.
+otool -l "$app/Contents/MacOS/libvlc.dylib" | grep -q '@loader_path' \
+    || { echo "[ERROR] libvlc.dylib has no @loader_path run path; the bundle would not start." >&2; exit 1; }
+
+# The stale cache is meant to be gone, not merely usually gone.
+test ! -e "$app/Contents/MacOS/plugins/plugins.dat" \
+    || { echo "[ERROR] the VLC plugin cache is still in the bundle; it would be stale." >&2; exit 1; }
+
 cp "$build_dir/luma.icns" "$app/Contents/Resources/luma.icns"
 sed "s/@VERSION@/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plist"
 
@@ -278,4 +329,5 @@ hdiutil create \
 echo
 echo " $(basename "$dmg")  ($(du -h "$dmg" | cut -f1))"
 echo " $repo_root/$dmg"
+echo " bundle staged in $app"
 echo

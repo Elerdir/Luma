@@ -91,7 +91,6 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDockedPlaylistVisible))]
-    [NotifyPropertyChangedFor(nameof(IsFloatingPlaylistVisible))]
     private bool _isPlaylistVisible;
 
     /// <summary>
@@ -100,15 +99,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// instances is on screen depends on it.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDockedPlaylistVisible))]
-    [NotifyPropertyChangedFor(nameof(IsFloatingPlaylistVisible))]
     private bool _isFullscreen;
 
-    /// <summary>The playlist beside the video: windowed only.</summary>
-    public bool IsDockedPlaylistVisible => IsPlaylistVisible && !IsFullscreen;
-
-    /// <summary>The playlist over the video: fullscreen only.</summary>
-    public bool IsFloatingPlaylistVisible => IsPlaylistVisible && IsFullscreen;
+    /// <summary>
+    /// The playlist beside the video — fullscreen included. There used to be a second
+    /// copy floating over the picture for fullscreen, and it could not be seen there:
+    /// it lived in VideoView's own window, which macOS leaves behind when the main
+    /// window takes a Space of its own. One copy, in the window the user is looking at.
+    /// </summary>
+    public bool IsDockedPlaylistVisible => IsPlaylistVisible;
 
     /// <summary>
     /// Whether opening one file also loads its folder. Takes effect on the next open —

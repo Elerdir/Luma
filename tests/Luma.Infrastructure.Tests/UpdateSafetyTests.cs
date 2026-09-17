@@ -27,6 +27,55 @@ public sealed class UpdateSafetyTests
     public void Everything_else_is_not(string? url) =>
         UpdateSafety.IsAcceptableUrl(url).ShouldBeFalse();
 
+    [Theory]
+    [InlineData("1.0.1", "1.0.0")]
+    [InlineData("1.1.0", "1.0.9")]
+    [InlineData("2.0.0", "1.9.9")]
+    [InlineData("1.0.0.1", "1.0.0")]
+    public void A_higher_version_is_an_update(string offered, string current) =>
+        UpdateSafety.IsNewerVersion(offered, current).ShouldBeTrue();
+
+    /// <summary>
+    /// The case the rule exists for. Every other gate passes an older build: the server
+    /// computes the hash for the file it serves, and serves it from its own origin — so
+    /// nothing but the version says this is a step backwards onto known flaws.
+    /// </summary>
+    [Theory]
+    [InlineData("0.9.0", "1.0.0")]
+    [InlineData("1.0.0", "1.0.1")]
+    [InlineData("1.0.0", "2.0.0")]
+    public void An_older_version_is_refused(string offered, string current) =>
+        UpdateSafety.IsNewerVersion(offered, current).ShouldBeFalse();
+
+    [Fact]
+    public void The_running_version_is_not_an_update_to_itself() =>
+        UpdateSafety.IsNewerVersion("1.2.3", "1.2.3").ShouldBeFalse();
+
+    /// <summary>
+    /// Ordering is over the numeric part alone, so a pre-release of the version already
+    /// running is not offered. Refusing is the safe way round: installing a beta over a
+    /// release because the strings differ is exactly the surprise this class avoids.
+    /// </summary>
+    [Theory]
+    [InlineData("1.2.3-beta1", "1.2.3")]
+    [InlineData("1.2.3+build9", "1.2.3")]
+    public void A_pre_release_of_the_running_version_is_not_an_update(string offered, string current) =>
+        UpdateSafety.IsNewerVersion(offered, current).ShouldBeFalse();
+
+    [Fact]
+    public void A_pre_release_of_a_later_version_still_counts() =>
+        UpdateSafety.IsNewerVersion("1.3.0-rc1", "1.2.9").ShouldBeTrue();
+
+    [Theory]
+    [InlineData("latest", "1.0.0")]
+    [InlineData("", "1.0.0")]
+    [InlineData(null, "1.0.0")]
+    [InlineData("1.0.1", "")]
+    [InlineData("1.0.1", null)]
+    [InlineData("...", "1.0.0")]
+    public void A_version_that_cannot_be_read_is_not_an_update(string? offered, string? current) =>
+        UpdateSafety.IsNewerVersion(offered, current).ShouldBeFalse();
+
     [Fact]
     public void A_download_from_the_configured_server_is_allowed()
     {

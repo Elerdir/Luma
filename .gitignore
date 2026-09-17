@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 # Installer output
 /dist/
 /artifacts/
+
+# Intermediate output of installer/macos/build-dmg.sh when LUMA_BUILD_DIR points here.
+build/
