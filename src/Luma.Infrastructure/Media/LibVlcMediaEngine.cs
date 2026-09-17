@@ -242,9 +242,135 @@ public sealed class LibVlcMediaEngine : IMediaEngine
 
     private static void EnsureCoreInitialized()
     {
-        if (Interlocked.Exchange(ref _coreInitialized, 1) == 0)
+        if (Interlocked.Exchange(ref _coreInitialized, 1) != 0) return;
+
+        if (PointLibVlcAtBundledPlugins())
+        {
             Core.Initialize();
+            return;
+        }
+
+        // Nothing shipped beside the executable: a build run from source rather than
+        // out of an installer. On macOS that is the case LibVLCSharp cannot serve on
+        // its own — see TryUseInstalledVlc.
+        if (OperatingSystem.IsMacOS() && TryUseInstalledVlc(out var libraryDirectory))
+        {
+            Core.Initialize(libraryDirectory);
+            return;
+        }
+
+        Core.Initialize();
     }
+
+    /// <summary>
+    /// Tells libvlc where its plugins are when they travel with the application.
+    ///
+    /// libvlc locates its own plugin directory relative to where libvlccore was loaded
+    /// from, and the layout it expects is VLC's own — the one inside VLC.app. A bundle
+    /// that puts the dylibs beside the executable, which is the only place LibVLCSharp
+    /// looks for them, therefore has a libvlc that loads and then fails to create an
+    /// instance: every module is missing, including the ones it cannot start without.
+    /// The result is a crash on startup with nothing pointing at the plugins.
+    ///
+    /// VLC_PLUGIN_PATH settles it, and only where the question arises: a plugins
+    /// directory that shipped with the application.
+    /// </summary>
+    /// <returns>Whether a bundled plugin directory was found.</returns>
+    private static bool PointLibVlcAtBundledPlugins()
+    {
+        if (OperatingSystem.IsWindows()) return false;
+
+        var plugins = Path.Combine(AppContext.BaseDirectory, "plugins");
+
+        if (!Directory.Exists(plugins)) return false;
+
+        UsePluginDirectory(plugins);
+        return true;
+    }
+
+    /// <summary>
+    /// Finds a VLC installed on the machine, so that Luma run from source plays
+    /// something.
+    ///
+    /// LibVLCSharp looks for libvlc beside the executable and nowhere else, so on macOS
+    /// "install VLC and run from source" does not work by itself however the copy of VLC
+    /// got there: a developer build crashes on startup with a Mac that has VLC.app sitting
+    /// in Applications. Only a packaged Luma carries its own libvlc, and only the
+    /// installed application is packaged.
+    ///
+    /// Both halves of a VLC installation are needed and neither is where LibVLCSharp
+    /// would look, so both are handed over explicitly: the directory holding the
+    /// libraries, and the plugin directory that goes with that same copy — never a mix
+    /// of two installations.
+    /// </summary>
+    /// <param name="libraryDirectory">Where libvlc.dylib was found.</param>
+    private static bool TryUseInstalledVlc(out string libraryDirectory)
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        // VLC.app first: it is what videolan.org hands out and what the README asks for.
+        // The Homebrew formula (as opposed to the cask, which installs VLC.app) puts the
+        // libraries straight into its prefix, with the plugins under lib/vlc.
+        (string Libraries, string Plugins)[] candidates =
+        [
+            ("/Applications/VLC.app/Contents/MacOS/lib", "/Applications/VLC.app/Contents/MacOS/plugins"),
+            (Path.Combine(home, "Applications/VLC.app/Contents/MacOS/lib"),
+             Path.Combine(home, "Applications/VLC.app/Contents/MacOS/plugins")),
+            ("/opt/homebrew/lib", "/opt/homebrew/lib/vlc/plugins"),
+            ("/usr/local/lib", "/usr/local/lib/vlc/plugins")
+        ];
+
+        foreach (var (libraries, plugins) in candidates)
+        {
+            if (!File.Exists(Path.Combine(libraries, "libvlc.dylib"))) continue;
+            if (!Directory.Exists(plugins)) continue;
+
+            // libvlc.dylib asks for @rpath/libvlccore.dylib, and the run path that
+            // resolves it belongs to VLC's own executable — which is not the one running.
+            // Loading libvlccore first by its full path is what makes the reference
+            // resolvable: dyld records the library under its install name, and satisfies
+            // libvlc from the copy already in the process rather than searching for it.
+            if (Dlopen(Path.Combine(libraries, "libvlccore.dylib"), RtldNow | RtldGlobal) == IntPtr.Zero)
+                continue;
+
+            UsePluginDirectory(plugins);
+            libraryDirectory = libraries;
+            return true;
+        }
+
+        libraryDirectory = string.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Points libvlc at a plugin directory, unless the environment already names one:
+    /// an explicit VLC_PLUGIN_PATH is the user's and outranks anything decided here.
+    /// </summary>
+    private static void UsePluginDirectory(string plugins)
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH")))
+            return;
+
+        // Environment.SetEnvironmentVariable would be the obvious call and is the wrong
+        // one: on .NET it writes to a managed copy of the environment, which getenv in a
+        // native library never reads. libvlc would go on finding nothing, with the
+        // variable visibly set on the managed side — so the real setenv is called here,
+        // before libvlc is loaded and while the process is still single-threaded. The
+        // managed copy is set too, so that reading it back agrees with what libvlc sees.
+        Setenv("VLC_PLUGIN_PATH", plugins, overwrite: 1);
+        Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", plugins);
+    }
+
+    private const int RtldNow = 2;
+    private const int RtldGlobal = 8;
+
+    [System.Runtime.InteropServices.DllImport("libc", EntryPoint = "setenv",
+        CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+    private static extern int Setenv(string name, string value, int overwrite);
+
+    [System.Runtime.InteropServices.DllImport("libc", EntryPoint = "dlopen",
+        CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
+    private static extern IntPtr Dlopen(string path, int mode);
 
     private void ThrowIfDisposed() =>
         ObjectDisposedException.ThrowIf(_disposed, this);
