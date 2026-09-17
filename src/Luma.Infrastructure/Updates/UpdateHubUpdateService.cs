@@ -77,6 +77,13 @@ public sealed class UpdateHubUpdateService : IUpdateService
             if (!result.HasUpdate || string.IsNullOrWhiteSpace(result.DownloadUrl))
                 return null;
 
+            // HasUpdate is the server's opinion, and it was the only thing consulted.
+            // Checked here rather than taken on trust: a server that offers an older
+            // build passes every other gate, because it computes the hash for that file
+            // and serves it from its own origin. See UpdateSafety.IsNewerVersion.
+            if (!UpdateSafety.IsNewerVersion(result.LatestVersion, _currentVersion))
+                return null;
+
             // Nothing to offer if it could not be installed anyway — see DownloadAsync.
             if (!UpdateSafety.IsFromSameServer(result.DownloadUrl, options.ServerUrl) ||
                 string.IsNullOrWhiteSpace(result.Sha256))
@@ -126,6 +133,12 @@ public sealed class UpdateHubUpdateService : IUpdateService
         if (string.IsNullOrWhiteSpace(update.Sha256))
             throw new InvalidOperationException(
                 "The update server did not publish a checksum for this release.");
+
+        // Re-checked here for the same reason as the two above: this method is public
+        // and it produces a file somebody is about to run.
+        if (!UpdateSafety.IsNewerVersion(update.Version, _currentVersion))
+            throw new InvalidOperationException(
+                "The update is not a newer version than the one running.");
 
         var destination = Path.Combine(
             Path.GetTempPath(),
