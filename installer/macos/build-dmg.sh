@@ -81,9 +81,22 @@ esac
 vlc_version="3.0.21"
 
 publish_dir="artifacts/publish/$rid"
+
 # Per architecture, so building both in turn on one machine does not have the second
 # run signing and packaging whatever the first left behind.
-build_dir="build/macos/$arch"
+#
+# Staged outside the repository, because the bundle cannot be signed everywhere a
+# checkout can live. Under a synced folder — iCloud Drive claims Documents by default —
+# the file provider marks .app directories with com.apple.FinderInfo, and it puts the
+# attribute back the moment codesign creates the bundle it is signing. codesign then
+# refuses it ("resource fork, Finder information, or similar detritus not allowed"),
+# and clearing the attribute first does not help: the race is with codesign itself.
+#
+# Nothing is lost by staging elsewhere — the disk image is the artifact, and it still
+# lands in dist/. LUMA_BUILD_DIR overrides this for anyone who wants the intermediate
+# Luma.app somewhere they can look at it.
+build_root="${LUMA_BUILD_DIR:-${TMPDIR:-/tmp}/luma-build}"
+build_dir="$build_root/$arch"
 app="$build_dir/Luma.app"
 dmg="dist/Luma-$version-$arch.dmg"
 entitlements="installer/macos/Luma.entitlements"
@@ -127,6 +140,14 @@ fi
 # process is launched from are ever consulted.
 sign_bundle() {
     local bundle="$1"
+
+    # codesign refuses a bundle carrying Finder information or a resource fork, and a
+    # checkout under an iCloud-synced folder — Documents, by default — collects those
+    # without anyone asking for them. The attributes belong to the copy, never to the
+    # build, so clearing them loses nothing and turns a confusing late failure
+    # ("resource fork, Finder information, or similar detritus not allowed") into a
+    # build that simply works wherever the repository happens to live.
+    xattr -cr "$bundle"
 
     echo "        signing (identity: $identity)"
 
@@ -254,6 +275,27 @@ cp -R "$publish_dir/." "$app/Contents/MacOS/"
 cp "$build_dir"/libvlc/lib/*.dylib "$app/Contents/MacOS/"
 cp -R "$build_dir/libvlc/plugins"  "$app/Contents/MacOS/plugins"
 
+# libvlc.dylib asks for @rpath/libvlccore.dylib, and inside VLC.app the run path that
+# resolves it belongs to VLC's own executable. Here the executable is the .NET host,
+# which has no reason to carry one — so the pair is copied across intact and then fails
+# to load, with dyld looking in /usr/local/lib and /usr/lib for a library sitting right
+# beside the one that asked for it.
+#
+# @loader_path on the libraries themselves is the answer that does not depend on who
+# loads them: a plain dlopen from the host resolves, and so would one from anywhere
+# else. The plugins ask for libvlccore the same way, but they are opened by libvlccore
+# once it is already in the process, and dyld satisfies them from it.
+echo "        patching the run path onto libvlc..."
+for dylib in "$app"/Contents/MacOS/libvlc*.dylib; do
+    install_name_tool -add_rpath @loader_path "$dylib" 2>/dev/null
+done
+
+# Proof, rather than the assumption that the loop above did anything: the failure it
+# fixes is invisible until the application is launched, and a silent install_name_tool
+# would ship a bundle that crashes on startup.
+otool -l "$app/Contents/MacOS/libvlc.dylib" | grep -q '@loader_path' \
+    || { echo "[ERROR] libvlc.dylib has no @loader_path run path; the bundle would not start." >&2; exit 1; }
+
 cp "$build_dir/luma.icns" "$app/Contents/Resources/luma.icns"
 sed "s/@VERSION@/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plist"
 
@@ -278,4 +320,5 @@ hdiutil create \
 echo
 echo " $(basename "$dmg")  ($(du -h "$dmg" | cut -f1))"
 echo " $repo_root/$dmg"
+echo " bundle staged in $app"
 echo

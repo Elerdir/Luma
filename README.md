@@ -74,6 +74,12 @@ sudo apt install libvlc-dev vlc-plugin-base
 brew install --cask vlc
 ```
 
+On macOS that is all it takes, but not because LibVLCSharp finds it: it looks for libvlc
+beside the executable and nowhere else, which only a packaged Luma has. So Luma looks for
+an installed VLC itself — `VLC.app` under either Applications folder, or a Homebrew
+prefix — and hands libvlc both the libraries and the matching plugin directory. Setting
+`VLC_PLUGIN_PATH` overrides the plugin half.
+
 ## Releases
 
 `.github/workflows/release.yml` builds both installers:
