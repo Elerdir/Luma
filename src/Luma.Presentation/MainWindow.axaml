@@ -211,28 +211,18 @@
               otherwise. The control itself stays in the tree and keeps its player.
             -->
             <vlc:VideoView Name="VideoView" IsVisible="{Binding HasMedia}">
+
+                <!--
+                  Empty on purpose. This panel is the only layer that receives pointer
+                  and key input over the picture, so it has to exist and has handlers
+                  attached in code — but nothing is drawn in it any more. Chrome put
+                  here is invisible for the whole of fullscreen on macOS: the window
+                  goes to a Space of its own and this one, being a window of its own,
+                  stays behind. See SetFullscreen.
+                -->
                 <Panel Name="VideoOverlay" Background="Transparent"
                        DoubleTapped="OnVideoAreaDoubleTapped">
 
-                    <!--
-                      Fullscreen instance: the same control, floating over the picture
-                      with a translucent background so the film shows through. It has
-                      to live inside VideoOverlay — that is the only layer stacked
-                      above the native video surface.
-                    -->
-                    <controls:TransportBar Name="FullscreenTransport"
-                                           VerticalAlignment="Bottom"
-                                           Background="#D912141A" Padding="14,10"
-                                           IsVisible="False" />
-
-                    <!-- Fullscreen playlist: over the picture rather than beside it, and
-                         translucent for the same reason the bar is. -->
-                    <Border HorizontalAlignment="Right" VerticalAlignment="Stretch"
-                            IsVisible="{Binding IsFloatingPlaylistVisible}"
-                            Background="#D912141A"
-                            BorderBrush="#3322252E" BorderThickness="1,0,0,0">
-                        <controls:PlaylistPanel />
-                    </Border>
                 </Panel>
             </vlc:VideoView>
 

@@ -351,35 +351,33 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
             vm.IsFullscreen = on;
 
-        var docked = this.FindControl<TransportBar>("DockedTransport");
-
         if (on)
         {
             _stateBeforeFullscreen = WindowState;
             WindowState = WindowState.FullScreen;
-
-            // The docked copy goes away entirely so the video gets the whole screen;
-            // the floating one takes over and auto-hides.
-            if (docked is not null) docked.IsVisible = false;
             RevealControls();
         }
         else
         {
             _idleTimer.Stop();
-            SetControlsVisible(false);
-            if (docked is not null) docked.IsVisible = true;
+            SetControlsVisible(true);
             ShowCursor();
             WindowState = _stateBeforeFullscreen;
         }
     }
 
-    // ---- Fullscreen chrome: float the controls over the video and hide them while idle ----
+    // ---- Fullscreen chrome: hide the controls while idle, and give the row back ----
     //
-    // Two instances of one TransportBar: the docked one is hidden for the duration of
-    // fullscreen so the video has the whole screen, and the instance inside the video
-    // overlay floats over the picture instead. An earlier attempt re-parented a single
-    // instance between the two places and silently did nothing, because the overlay
-    // lives in VideoView's own top-level window and controls do not move between those.
+    // One TransportBar, in this window, shown and hidden in place. It used to be two —
+    // the second floating over the picture inside the video overlay, so that fullscreen
+    // gave the film the whole screen — and on macOS that copy could not be seen at all:
+    // a fullscreen window gets a Space of its own, the overlay is a window of its own
+    // and stays behind on the desktop, and the controls were simply never on screen.
+    // Moving the mouse did reveal them; they were revealed somewhere nobody could look.
+    //
+    // So the bar hides and unhides where it is. Showing it takes its row back from the
+    // video for as long as it is up, which is the visible cost of having controls that
+    // are actually there.
 
     private static readonly TimeSpan IdleBeforeHiding = TimeSpan.FromSeconds(3);
     private static readonly Cursor HiddenCursor = new(StandardCursorType.None);
@@ -389,8 +387,8 @@ public partial class MainWindow : Window
 
     private void SetControlsVisible(bool visible)
     {
-        if (this.FindControl<TransportBar>("FullscreenTransport") is { } floating)
-            floating.IsVisible = visible;
+        if (this.FindControl<TransportBar>("DockedTransport") is { } transport)
+            transport.IsVisible = visible;
     }
 
     /// <summary>
@@ -459,9 +457,9 @@ public partial class MainWindow : Window
         // under a user who is reaching for the seek slider. The same goes for an open
         // playlist: someone who just asked for it is about to click a row, and taking
         // the cursor away mid-reach is the same rudeness.
-        var transport = this.FindControl<TransportBar>("FullscreenTransport");
+        var transport = this.FindControl<TransportBar>("DockedTransport");
         if (transport?.IsPointerOver == true ||
-            (DataContext is MainViewModel { IsFloatingPlaylistVisible: true }))
+            (DataContext is MainViewModel { IsPlaylistVisible: true }))
         {
             _idleTimer.Start();
             return;
