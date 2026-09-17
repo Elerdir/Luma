@@ -275,6 +275,21 @@ cp -R "$build_dir/libvlc/plugins"  "$app/Contents/MacOS/plugins"
 # loads them: a plain dlopen from the host resolves, and so would one from anywhere
 # else. The plugins ask for libvlccore the same way, but they are opened by libvlccore
 # once it is already in the process, and dyld satisfies them from it.
+# VLC ships a cache of its plugin descriptors so that starting up does not mean opening
+# all three hundred of them. It is keyed on each plugin's path and modification time, and
+# signing the bundle rewrites every one of those plugins — so by the time this bundle is
+# finished the cache describes files that no longer match, and libvlc says so:
+#
+#   main libvlc error: stale plugins cache: modified .../libtospdif_plugin.dylib
+#
+# 337 of those lines at every launch, and the scan it was meant to avoid happens anyway.
+# Regenerating it after signing is not open to us either: vlc-cache-gen is not in the
+# VLC download, and a file rewritten after codesign would break the bundle's seal.
+#
+# So it goes. Startup is exactly as fast as it already was — the cache was being thrown
+# away regardless — and what is left is a quarter of a megabyte smaller and quiet.
+rm -f "$app/Contents/MacOS/plugins/plugins.dat"
+
 echo "        patching the run path onto libvlc..."
 for dylib in "$app"/Contents/MacOS/libvlc*.dylib; do
     install_name_tool -add_rpath @loader_path "$dylib" 2>/dev/null
@@ -285,6 +300,10 @@ done
 # would ship a bundle that crashes on startup.
 otool -l "$app/Contents/MacOS/libvlc.dylib" | grep -q '@loader_path' \
     || { echo "[ERROR] libvlc.dylib has no @loader_path run path; the bundle would not start." >&2; exit 1; }
+
+# The stale cache is meant to be gone, not merely usually gone.
+test ! -e "$app/Contents/MacOS/plugins/plugins.dat" \
+    || { echo "[ERROR] the VLC plugin cache is still in the bundle; it would be stale." >&2; exit 1; }
 
 cp "$build_dir/luma.icns" "$app/Contents/Resources/luma.icns"
 sed "s/@VERSION@/$version/g" installer/macos/Info.plist > "$app/Contents/Info.plist"
