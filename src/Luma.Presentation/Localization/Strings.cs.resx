@@ -51,6 +51,7 @@
   <data name="Button.Clear" xml:space="preserve"><value>Vyprázdnit</value></data>
   <data name="Button.Install" xml:space="preserve"><value>Instalovat</value></data>
 
+  <data name="Playlist.NothingToPlay" xml:space="preserve"><value>V tom playlistu není nic, co by šlo přehrát.</value></data>
   <data name="Playlist.Title" xml:space="preserve"><value>Seznam stop</value></data>
 
   <data name="Repeat.Off" xml:space="preserve"><value>Opakování: vypnuto</value></data>

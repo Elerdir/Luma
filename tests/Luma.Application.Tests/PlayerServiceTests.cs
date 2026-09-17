@@ -466,4 +466,40 @@ public class PlayerServiceTests
         await player.DisposeAsync();
         engine.Disposed.ShouldBeTrue();
     }
+
+    /// <summary>
+    /// A playlist file holding one film is still a list. Opening it through the path
+    /// that loads a folder alongside a single file would hand back the whole directory,
+    /// which is not what anyone who saved a playlist asked for.
+    /// </summary>
+    [Fact]
+    public async Task A_playlist_of_one_is_not_expanded_to_its_folder()
+    {
+        var engine = new FakeMediaEngine();
+        var only = MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "a.mkv"));
+        var scanner = new FakeMediaFolderScanner(
+            only, MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "b.mkv")));
+
+        await using var player = new PlayerService(engine, folderScanner: scanner);
+
+        await player.OpenPlaylistAsync([only]);
+
+        player.Snapshot.PlaylistCount.ShouldBe(1);
+    }
+
+    /// <summary>And the folder rule still holds for a file somebody opened.</summary>
+    [Fact]
+    public async Task A_single_file_opened_normally_still_loads_its_folder()
+    {
+        var engine = new FakeMediaEngine();
+        var first = MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "a.mkv"));
+        var scanner = new FakeMediaFolderScanner(
+            first, MediaSource.FromFile(Path.Combine(Path.GetTempPath(), "b.mkv")));
+
+        await using var player = new PlayerService(engine, folderScanner: scanner);
+
+        await player.OpenAsync(first);
+
+        player.Snapshot.PlaylistCount.ShouldBe(2);
+    }
 }

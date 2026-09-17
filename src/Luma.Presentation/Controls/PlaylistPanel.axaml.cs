@@ -47,6 +47,10 @@ public partial class PlaylistPanel : UserControl
 
     private const double DragThreshold = 6;
 
+    // Held rather than built per drag: a Cursor owns a native handle, and one made on
+    // every drag and dropped on every release is a handle leaked on every release.
+    private static readonly Cursor DraggingCursor = new(StandardCursorType.SizeAll);
+
     private PlaylistItemViewModel? _dragItem;
     private Point _dragStart;
     private bool _dragging;
@@ -78,7 +82,7 @@ public partial class PlaylistPanel : UserControl
 
         _dragging = true;
         e.Pointer.Capture(_rows);
-        Cursor = new Cursor(StandardCursorType.SizeAll);
+        Cursor = DraggingCursor;
     }
 
     private void OnRowsPointerReleased(object? sender, PointerReleasedEventArgs e)

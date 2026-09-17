@@ -57,6 +57,7 @@
   <data name="Button.Clear" xml:space="preserve"><value>Clear</value></data>
   <data name="Button.Install" xml:space="preserve"><value>Install</value></data>
 
+  <data name="Playlist.NothingToPlay" xml:space="preserve"><value>That playlist has nothing playable in it.</value></data>
   <data name="Playlist.Title" xml:space="preserve"><value>Playlist</value></data>
 
   <data name="Repeat.Off" xml:space="preserve"><value>Repeat: off</value></data>

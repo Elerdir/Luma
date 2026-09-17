@@ -480,7 +480,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         await RunAsync(async () =>
         {
             var items = await _playlists.LoadAsync(path);
-            await _player.OpenAsync(items);
+
+            if (items.Count == 0)
+            {
+                StatusText = Localizer.Instance["Playlist.NothingToPlay"];
+                return;
+            }
+
+            // Not OpenAsync: a playlist holding one film is still a list, and OpenAsync
+            // would take that one entry for a file somebody opened and load its whole
+            // folder alongside it.
+            await _player.OpenPlaylistAsync(items);
         });
     }
 
@@ -708,6 +718,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         _appliedPlaylist = s.PlaylistItems;
+
+        // Both depend on the list's length as well as on what is selected, and the
+        // length changes without the selection changing — remove the last entry but one
+        // and the down arrow stays lit on a row that can no longer move.
+        MoveSelectedUpCommand.NotifyCanExecuteChanged();
+        MoveSelectedDownCommand.NotifyCanExecuteChanged();
 
         for (var i = 0; i < Playlist.Count; i++)
             Playlist[i].IsCurrent = i == s.PlaylistIndex;

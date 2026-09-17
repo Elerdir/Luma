@@ -1,3 +1,4 @@
+using System.Text;
 using Luma.Domain.Media;
 using Luma.Infrastructure.Media;
 
@@ -109,5 +110,41 @@ public sealed class M3UPlaylistFileStoreTests : IDisposable
     {
         if (Directory.Exists(_directory))
             Directory.Delete(_directory, recursive: true);
+    }
+
+    /// <summary>
+    /// A .m3u written before UTF-8 was the assumption. Decoded as UTF-8 with the usual
+    /// replacement behaviour, an accented name comes back full of U+FFFD and points at a
+    /// file that is not there — the playlist loads and the entry cannot be opened.
+    /// </summary>
+    [Fact]
+    public async Task An_entry_written_in_a_legacy_encoding_survives_as_itself()
+    {
+        var directory = Directory.CreateTempSubdirectory();
+        var playlist = Path.Combine(directory.FullName, "staré.m3u");
+
+        // "Špalek.mkv" as Latin-1 bytes, which are not valid UTF-8.
+        await File.WriteAllBytesAsync(playlist, Encoding.Latin1.GetBytes("Spalek-é.mkv\n"));
+
+        var loaded = await new M3UPlaylistFileStore().LoadAsync(playlist);
+
+        loaded.Count.ShouldBe(1);
+        loaded[0].DisplayName.ShouldBe("Spalek-é.mkv");
+    }
+
+    [Fact]
+    public async Task A_byte_order_mark_does_not_ride_along_on_the_first_entry()
+    {
+        var directory = Directory.CreateTempSubdirectory();
+        var playlist = Path.Combine(directory.FullName, "bom.m3u");
+
+        await File.WriteAllBytesAsync(playlist,
+            [.. new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetPreamble(),
+             .. Encoding.UTF8.GetBytes("film.mkv\n")]);
+
+        var loaded = await new M3UPlaylistFileStore().LoadAsync(playlist);
+
+        loaded.Count.ShouldBe(1);
+        loaded[0].DisplayName.ShouldBe("film.mkv");
     }
 }

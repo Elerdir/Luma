@@ -16,7 +16,7 @@ public sealed class M3UPlaylistFileStore : IPlaylistFileStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        var lines = await File.ReadAllLinesAsync(path, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        var lines = await ReadLinesAsync(path, cancellationToken).ConfigureAwait(false);
 
         // Entries are relative to the playlist's own folder, not the current working
         // directory — the whole point is that a playlist survives moving with its videos.
@@ -60,6 +60,43 @@ public sealed class M3UPlaylistFileStore : IPlaylistFileStore
             Directory.CreateDirectory(directory);
 
         await File.WriteAllTextAsync(path, text.ToString(), Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reads the file as UTF-8, and falls back when it plainly is not.
+    ///
+    /// .m3u8 means UTF-8 by definition; .m3u predates the question and holds whatever
+    /// code page the machine that wrote it used. Decoding those bytes as UTF-8 with the
+    /// usual replacement behaviour turns every accented character into U+FFFD, and every
+    /// entry with one in its name into a path to a file that is not there — which is a
+    /// playlist that loads with entries that silently cannot be opened.
+    ///
+    /// Strict decoding turns that into something answerable: if the bytes are not UTF-8,
+    /// they are read as Latin-1 instead, which maps each byte to the character of the
+    /// same value. That is exactly right for a Latin-1 playlist and merely no worse than
+    /// before for one written in another code page — the bytes are preserved rather than
+    /// replaced, but the characters they stand for still depend on a code page nothing
+    /// here records.
+    /// </summary>
+    private static async Task<string[]> ReadLinesAsync(string path, CancellationToken cancellationToken)
+    {
+        var bytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+
+        var strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+        string text;
+        try
+        {
+            text = strictUtf8.GetString(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            text = Encoding.Latin1.GetString(bytes);
+        }
+
+        // A byte-order mark decodes to a zero-width character, which would otherwise
+        // ride along on the first entry and make it a path to nothing.
+        return text.TrimStart('\uFEFF').ReplaceLineEndings("\n").Split('\n');
     }
 
     /// <summary>

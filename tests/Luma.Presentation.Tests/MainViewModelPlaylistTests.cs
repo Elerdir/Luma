@@ -181,7 +181,49 @@ public sealed class MainViewModelPlaylistTests : IDisposable
 
         await vm.LoadPlaylistCommand.ExecuteAsync(null);
 
-        player.OpenedPlaylists.ShouldHaveSingleItem().ShouldBe(items);
+        // As a list, not as a selection of files: the difference decides whether a
+        // playlist of one drags its whole folder in behind it.
+        player.OpenedAsPlaylist.ShouldHaveSingleItem().ShouldBe(items);
+        player.OpenedPlaylists.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// The case that made the distinction necessary. Nothing about one entry makes a
+    /// playlist into a file somebody opened.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task A_playlist_holding_one_film_is_still_opened_as_a_list()
+    {
+        var (vm, player, picker, store) = Create();
+        var path = Path.Combine(Path.GetTempPath(), "luma", "one.m3u");
+        var items = new[] { File("ep1.mkv") };
+        picker.PlaylistToOpen = path;
+        store.ToLoad[path] = items;
+
+        await vm.LoadPlaylistCommand.ExecuteAsync(null);
+
+        player.OpenedAsPlaylist.ShouldHaveSingleItem().ShouldBe(items);
+        player.OpenedPlaylists.ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// A playlist whose entries all failed to resolve — a file moved, a format this
+    /// build cannot read. Opening nothing used to surface as "At least one source is
+    /// required", which is a sentence written for whoever wrote the method.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task An_empty_playlist_says_so_in_words_meant_for_a_person()
+    {
+        var (vm, player, picker, store) = Create();
+        var path = Path.Combine(Path.GetTempPath(), "luma", "empty.m3u");
+        picker.PlaylistToOpen = path;
+        store.ToLoad[path] = [];
+
+        await vm.LoadPlaylistCommand.ExecuteAsync(null);
+
+        player.OpenedAsPlaylist.ShouldBeEmpty();
+        player.OpenedPlaylists.ShouldBeEmpty();
+        vm.StatusText.ShouldBe("That playlist has nothing playable in it.");
     }
 
     [AvaloniaFact]

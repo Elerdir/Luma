@@ -51,6 +51,15 @@ public sealed class FakePlayer : IPlayer
         OpenedPlaylists.Add(sources);
         return Task.CompletedTask;
     }
+
+    /// <summary>Lists opened as lists, kept apart so a test can tell which way it went.</summary>
+    public List<IReadOnlyList<MediaSource>> OpenedAsPlaylist { get; } = [];
+
+    public Task OpenPlaylistAsync(IReadOnlyList<MediaSource> sources, CancellationToken ct = default)
+    {
+        OpenedAsPlaylist.Add(sources);
+        return Task.CompletedTask;
+    }
     public void Play() { }
     public void Pause() { }
     public void TogglePlayPause() { }
