@@ -28,211 +28,191 @@
     <Grid Name="RootGrid" RowDefinitions="*,Auto" ColumnDefinitions="*,Auto">
 
         <!--
-          Video surface. The overlay lives *inside* VideoView: it hosts its content in a
-          transparent floating window stacked above the native video surface, which is the
-          only layer that receives pointer input there — a sibling control would be covered
-          by the native child window and never see a click. Double-click toggles fullscreen.
+          Video surface. VideoView hosts its content in a transparent floating window
+          stacked above the native video surface, and that window is the only layer
+          receiving pointer input over the picture — chrome that must sit on the film
+          while it plays has to live there, however awkward the separate window is.
+          Anything that does not (the right-click menu, the idle screen) is better off
+          here, in the main window. Double-click toggles fullscreen.
+
+          Submenu ticks compare against the same properties the rest of the app uses,
+          so there is no second copy of "what is selected".
         -->
         <Panel Grid.Row="0" Grid.Column="0" Name="VideoArea" Background="Black"
                DoubleTapped="OnVideoAreaDoubleTapped"
                PointerReleased="OnVideoPointerReleased">
-            <vlc:VideoView Name="VideoView">
+
+            <Panel.ContextFlyout>
+                <MenuFlyout>
+                    <!-- The gesture comes from code because it is not the same
+                         on every platform: Cmd+O on a Mac, Ctrl+O elsewhere. -->
+                    <MenuItem Header="{loc:Localize Menu.Open}"
+                              Command="{Binding OpenCommand}"
+                              InputGesture="{x:Static input:PlayerShortcuts.OpenGesture}" />
+                    <Separator />
+
+                    <MenuItem Header="{loc:Localize Menu.PlayPause}"
+                              Command="{Binding PlayPauseCommand}" InputGesture="Space" />
+                    <MenuItem Header="{loc:Localize Menu.Stop}"
+                              Command="{Binding StopCommand}" InputGesture="S" />
+                    <MenuItem Header="{loc:Localize Menu.Previous}"
+                              Command="{Binding PreviousCommand}" InputGesture="P" />
+                    <MenuItem Header="{loc:Localize Menu.Next}"
+                              Command="{Binding NextCommand}" InputGesture="N" />
+
+                    <Separator />
+
+                    <MenuItem Header="{loc:Localize Menu.AudioTrack}"
+                              IsEnabled="{Binding HasMedia}"
+                              ItemsSource="{Binding AudioTracks}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}"
+                                          x:DataType="md:MediaTrack">
+                                <Setter Property="Header" Value="{Binding Name}" />
+                                <Setter Property="ToggleType" Value="Radio" />
+                                <Setter Property="Command"
+                                        Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectAudioCommand}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                                <Setter Property="IsChecked">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                            <Binding />
+                                            <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedAudioTrack" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
+
+                    <MenuItem Header="{loc:Localize Menu.Subtitles}"
+                              IsEnabled="{Binding HasMedia}"
+                              ItemsSource="{Binding SubtitleOptions}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}"
+                                          x:DataType="md:MediaTrack">
+                                <Setter Property="Header" Value="{Binding Name}" />
+                                <Setter Property="ToggleType" Value="Radio" />
+                                <Setter Property="Command"
+                                        Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectSubtitleCommand}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                                <Setter Property="IsChecked">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                            <Binding />
+                                            <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedSubtitle" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
+
+                    <MenuItem Header="{loc:Localize Menu.LoadSubtitle}"
+                              Command="{Binding LoadSubtitleCommand}" />
+
+                    <MenuItem Header="{loc:Localize Menu.Speed}"
+                              ItemsSource="{Binding RateOptions}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}"
+                                          x:DataType="x:Double">
+                                <Setter Property="Header" Value="{Binding StringFormat='{}{0}x'}" />
+                                <Setter Property="ToggleType" Value="Radio" />
+                                <Setter Property="Command"
+                                        Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectRateCommand}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                                <Setter Property="IsChecked">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                            <Binding />
+                                            <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedRate" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
+
+                    <MenuItem Header="{loc:Localize Menu.Repeat}">
+                        <MenuItem Header="{loc:Localize Menu.RepeatOff}" ToggleType="Radio"
+                                  Command="{Binding SetRepeatCommand}"
+                                  CommandParameter="{x:Static pl:RepeatMode.None}">
+                            <MenuItem.IsChecked>
+                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                    <Binding Path="Repeat" />
+                                    <Binding Source="{x:Static pl:RepeatMode.None}" />
+                                </MultiBinding>
+                            </MenuItem.IsChecked>
+                        </MenuItem>
+                        <MenuItem Header="{loc:Localize Menu.RepeatOne}" ToggleType="Radio"
+                                  Command="{Binding SetRepeatCommand}"
+                                  CommandParameter="{x:Static pl:RepeatMode.One}">
+                            <MenuItem.IsChecked>
+                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                    <Binding Path="Repeat" />
+                                    <Binding Source="{x:Static pl:RepeatMode.One}" />
+                                </MultiBinding>
+                            </MenuItem.IsChecked>
+                        </MenuItem>
+                        <MenuItem Header="{loc:Localize Menu.RepeatAll}" ToggleType="Radio"
+                                  Command="{Binding SetRepeatCommand}"
+                                  CommandParameter="{x:Static pl:RepeatMode.All}">
+                            <MenuItem.IsChecked>
+                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                    <Binding Path="Repeat" />
+                                    <Binding Source="{x:Static pl:RepeatMode.All}" />
+                                </MultiBinding>
+                            </MenuItem.IsChecked>
+                        </MenuItem>
+                    </MenuItem>
+
+                    <Separator />
+
+                    <MenuItem Header="{loc:Localize Menu.Playlist}" ToggleType="CheckBox"
+                              IsChecked="{Binding IsPlaylistVisible}"
+                              Command="{Binding TogglePlaylistCommand}" InputGesture="L" />
+                    <MenuItem Header="{loc:Localize Menu.LoadWholeFolder}" ToggleType="CheckBox"
+                              IsChecked="{Binding LoadWholeFolder}"
+                              Command="{Binding ToggleLoadWholeFolderCommand}" />
+                    <MenuItem Header="{loc:Localize Menu.Fullscreen}"
+                              Click="OnFullscreenMenuClick" InputGesture="F" />
+
+                    <MenuItem Header="{loc:Localize Menu.Language}"
+                              ItemsSource="{Binding Languages}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem"
+                                          BasedOn="{StaticResource {x:Type MenuItem}}"
+                                          x:DataType="loc:LanguageOption">
+                                <Setter Property="Header" Value="{Binding DisplayName}" />
+                                <Setter Property="ToggleType" Value="Radio" />
+                                <Setter Property="Command"
+                                        Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectLanguageCommand}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                                <Setter Property="IsChecked">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
+                                            <Binding />
+                                            <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedLanguage" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
+                </MenuFlyout>
+            </Panel.ContextFlyout>
+
+            <!--
+              Hidden while there is no film. The native surface covers whatever the main
+              window draws underneath it, so the idle screen below could not be seen
+              otherwise. The control itself stays in the tree and keeps its player.
+            -->
+            <vlc:VideoView Name="VideoView" IsVisible="{Binding HasMedia}">
                 <Panel Name="VideoOverlay" Background="Transparent"
                        DoubleTapped="OnVideoAreaDoubleTapped">
-
-                    <!--
-                      Right-click menu. It lives on the overlay rather than on VideoArea
-                      because the overlay is the layer that actually receives pointer
-                      input over the native video surface.
-
-                      Submenu ticks compare against the same properties the rest of the
-                      app uses, so there is no second copy of "what is selected".
-                    -->
-                    <Panel.ContextFlyout>
-                        <MenuFlyout>
-                            <!-- The gesture comes from code because it is not the same
-                                 on every platform: Cmd+O on a Mac, Ctrl+O elsewhere. -->
-                            <MenuItem Header="{loc:Localize Menu.Open}"
-                                      Command="{Binding OpenCommand}"
-                                      InputGesture="{x:Static input:PlayerShortcuts.OpenGesture}" />
-                            <Separator />
-
-                            <MenuItem Header="{loc:Localize Menu.PlayPause}"
-                                      Command="{Binding PlayPauseCommand}" InputGesture="Space" />
-                            <MenuItem Header="{loc:Localize Menu.Stop}"
-                                      Command="{Binding StopCommand}" InputGesture="S" />
-                            <MenuItem Header="{loc:Localize Menu.Previous}"
-                                      Command="{Binding PreviousCommand}" InputGesture="P" />
-                            <MenuItem Header="{loc:Localize Menu.Next}"
-                                      Command="{Binding NextCommand}" InputGesture="N" />
-
-                            <Separator />
-
-                            <MenuItem Header="{loc:Localize Menu.AudioTrack}"
-                                      IsEnabled="{Binding HasMedia}"
-                                      ItemsSource="{Binding AudioTracks}">
-                                <MenuItem.ItemContainerTheme>
-                                    <ControlTheme TargetType="MenuItem"
-                                                  BasedOn="{StaticResource {x:Type MenuItem}}"
-                                                  x:DataType="md:MediaTrack">
-                                        <Setter Property="Header" Value="{Binding Name}" />
-                                        <Setter Property="ToggleType" Value="Radio" />
-                                        <Setter Property="Command"
-                                                Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectAudioCommand}" />
-                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                        <Setter Property="IsChecked">
-                                            <Setter.Value>
-                                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedAudioTrack" />
-                                                </MultiBinding>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </ControlTheme>
-                                </MenuItem.ItemContainerTheme>
-                            </MenuItem>
-
-                            <MenuItem Header="{loc:Localize Menu.Subtitles}"
-                                      IsEnabled="{Binding HasMedia}"
-                                      ItemsSource="{Binding SubtitleOptions}">
-                                <MenuItem.ItemContainerTheme>
-                                    <ControlTheme TargetType="MenuItem"
-                                                  BasedOn="{StaticResource {x:Type MenuItem}}"
-                                                  x:DataType="md:MediaTrack">
-                                        <Setter Property="Header" Value="{Binding Name}" />
-                                        <Setter Property="ToggleType" Value="Radio" />
-                                        <Setter Property="Command"
-                                                Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectSubtitleCommand}" />
-                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                        <Setter Property="IsChecked">
-                                            <Setter.Value>
-                                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedSubtitle" />
-                                                </MultiBinding>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </ControlTheme>
-                                </MenuItem.ItemContainerTheme>
-                            </MenuItem>
-
-                            <MenuItem Header="{loc:Localize Menu.LoadSubtitle}"
-                                      Command="{Binding LoadSubtitleCommand}" />
-
-                            <MenuItem Header="{loc:Localize Menu.Speed}"
-                                      ItemsSource="{Binding RateOptions}">
-                                <MenuItem.ItemContainerTheme>
-                                    <ControlTheme TargetType="MenuItem"
-                                                  BasedOn="{StaticResource {x:Type MenuItem}}"
-                                                  x:DataType="x:Double">
-                                        <Setter Property="Header" Value="{Binding StringFormat='{}{0}x'}" />
-                                        <Setter Property="ToggleType" Value="Radio" />
-                                        <Setter Property="Command"
-                                                Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectRateCommand}" />
-                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                        <Setter Property="IsChecked">
-                                            <Setter.Value>
-                                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedRate" />
-                                                </MultiBinding>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </ControlTheme>
-                                </MenuItem.ItemContainerTheme>
-                            </MenuItem>
-
-                            <MenuItem Header="{loc:Localize Menu.Repeat}">
-                                <MenuItem Header="{loc:Localize Menu.RepeatOff}" ToggleType="Radio"
-                                          Command="{Binding SetRepeatCommand}"
-                                          CommandParameter="{x:Static pl:RepeatMode.None}">
-                                    <MenuItem.IsChecked>
-                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                            <Binding Path="Repeat" />
-                                            <Binding Source="{x:Static pl:RepeatMode.None}" />
-                                        </MultiBinding>
-                                    </MenuItem.IsChecked>
-                                </MenuItem>
-                                <MenuItem Header="{loc:Localize Menu.RepeatOne}" ToggleType="Radio"
-                                          Command="{Binding SetRepeatCommand}"
-                                          CommandParameter="{x:Static pl:RepeatMode.One}">
-                                    <MenuItem.IsChecked>
-                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                            <Binding Path="Repeat" />
-                                            <Binding Source="{x:Static pl:RepeatMode.One}" />
-                                        </MultiBinding>
-                                    </MenuItem.IsChecked>
-                                </MenuItem>
-                                <MenuItem Header="{loc:Localize Menu.RepeatAll}" ToggleType="Radio"
-                                          Command="{Binding SetRepeatCommand}"
-                                          CommandParameter="{x:Static pl:RepeatMode.All}">
-                                    <MenuItem.IsChecked>
-                                        <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                            <Binding Path="Repeat" />
-                                            <Binding Source="{x:Static pl:RepeatMode.All}" />
-                                        </MultiBinding>
-                                    </MenuItem.IsChecked>
-                                </MenuItem>
-                            </MenuItem>
-
-                            <Separator />
-
-                            <MenuItem Header="{loc:Localize Menu.Playlist}" ToggleType="CheckBox"
-                                      IsChecked="{Binding IsPlaylistVisible}"
-                                      Command="{Binding TogglePlaylistCommand}" InputGesture="L" />
-                            <MenuItem Header="{loc:Localize Menu.LoadWholeFolder}" ToggleType="CheckBox"
-                                      IsChecked="{Binding LoadWholeFolder}"
-                                      Command="{Binding ToggleLoadWholeFolderCommand}" />
-                            <MenuItem Header="{loc:Localize Menu.Fullscreen}"
-                                      Click="OnFullscreenMenuClick" InputGesture="F" />
-
-                            <MenuItem Header="{loc:Localize Menu.Language}"
-                                      ItemsSource="{Binding Languages}">
-                                <MenuItem.ItemContainerTheme>
-                                    <ControlTheme TargetType="MenuItem"
-                                                  BasedOn="{StaticResource {x:Type MenuItem}}"
-                                                  x:DataType="loc:LanguageOption">
-                                        <Setter Property="Header" Value="{Binding DisplayName}" />
-                                        <Setter Property="ToggleType" Value="Radio" />
-                                        <Setter Property="Command"
-                                                Value="{Binding $parent[Window].((vm:MainViewModel)DataContext).SelectLanguageCommand}" />
-                                        <Setter Property="CommandParameter" Value="{Binding}" />
-                                        <Setter Property="IsChecked">
-                                            <Setter.Value>
-                                                <MultiBinding Converter="{x:Static conv:EqualityConverter.Instance}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainViewModel)DataContext).SelectedLanguage" />
-                                                </MultiBinding>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </ControlTheme>
-                                </MenuItem.ItemContainerTheme>
-                            </MenuItem>
-                        </MenuFlyout>
-                    </Panel.ContextFlyout>
-
-                    <StackPanel IsVisible="{Binding !HasMedia}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                Spacing="14" Orientation="Vertical">
-                        <!-- Luma mark: aperture ring + luma-gradient play triangle -->
-                        <Panel Width="92" Height="92" HorizontalAlignment="Center">
-                            <Ellipse Width="92" Height="92"
-                                     Stroke="#2A2D37" StrokeThickness="6" />
-                            <Path HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  Data="M 0,0 L 26,15 L 0,30 Z">
-                                <Path.Fill>
-                                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                                        <GradientStop Offset="0" Color="#FF7A45" />
-                                        <GradientStop Offset="1" Color="#3FA9F5" />
-                                    </LinearGradientBrush>
-                                </Path.Fill>
-                            </Path>
-                        </Panel>
-                        <TextBlock Text="Luma" FontSize="30" FontWeight="Light"
-                                   Foreground="#E8EAED" HorizontalAlignment="Center" />
-                        <TextBlock Text="{loc:Localize App.OpenPrompt}"
-                                   Foreground="#7A7F8A" FontSize="13" HorizontalAlignment="Center" />
-                    </StackPanel>
 
                     <!--
                       Fullscreen instance: the same control, floating over the picture
@@ -255,6 +235,38 @@
                     </Border>
                 </Panel>
             </vlc:VideoView>
+
+            <!--
+              The idle screen, and deliberately not inside VideoOverlay. Hosted there it
+              rode in VideoView's floating window, which is a separate window the system
+              positions after the fact: it starts out of place — the mark sat low and to
+              the left of the black area until something nudged the layout — and it
+              lurches behind during a quick drag of the window. Drawn here it is part of
+              the same window as everything else, so it is centred from the first frame
+              and moves when the window moves.
+            -->
+            <StackPanel IsVisible="{Binding !HasMedia}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="14" Orientation="Vertical">
+                <!-- Luma mark: aperture ring + luma-gradient play triangle -->
+                <Panel Width="92" Height="92" HorizontalAlignment="Center">
+                    <Ellipse Width="92" Height="92"
+                             Stroke="#2A2D37" StrokeThickness="6" />
+                    <Path HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Data="M 0,0 L 26,15 L 0,30 Z">
+                        <Path.Fill>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                <GradientStop Offset="0" Color="#FF7A45" />
+                                <GradientStop Offset="1" Color="#3FA9F5" />
+                            </LinearGradientBrush>
+                        </Path.Fill>
+                    </Path>
+                </Panel>
+                <TextBlock Text="Luma" FontSize="30" FontWeight="Light"
+                           Foreground="#E8EAED" HorizontalAlignment="Center" />
+                <TextBlock Text="{loc:Localize App.OpenPrompt}"
+                           Foreground="#7A7F8A" FontSize="13" HorizontalAlignment="Center" />
+            </StackPanel>
         </Panel>
 
         <!-- Docked playlist: beside the video, opaque. Windowed only — in fullscreen the
