@@ -67,7 +67,8 @@ public sealed class UpdateHubUpdateService : IUpdateService
             if (!UpdateSafety.IsAcceptableUrl(options.ServerUrl))
                 return null;
 
-            using var client = new UpdateHubClient(options.ServerUrl, options.AppSlug);
+            using var http = BoundedClient(CheckLimit, CheckStallTimeout);
+            using var client = new UpdateHubClient(http, options.ServerUrl, options.AppSlug);
             var result = await client
                 .CheckForUpdateAsync(_currentVersion, options.Channel, cancellationToken)
                 .ConfigureAwait(false);
@@ -147,10 +148,30 @@ public sealed class UpdateHubUpdateService : IUpdateService
             // the folder or name an absolute path.
             $"Luma-{UpdateSafety.FileNamePart(update.Version)}{InstallerExtension}");
 
-        using var client = new UpdateHubClient(options.ServerUrl, options.AppSlug);
-        await client
-            .DownloadAsync(update.DownloadUrl, destination, progress, cancellationToken)
-            .ConfigureAwait(false);
+        using var http = BoundedClient(DownloadLimit, DownloadStallTimeout);
+        using var client = new UpdateHubClient(http, options.ServerUrl, options.AppSlug);
+
+        // A stall timeout alone still leaves "a byte every fifty-nine seconds" running
+        // until the size limit is reached, which at these sizes is not a wait anyone is
+        // going to sit through. Half an hour is far longer than an installer needs on
+        // any connection worth downloading one over.
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(DownloadDeadline);
+
+        try
+        {
+            await client
+                .DownloadAsync(update.DownloadUrl, destination, progress, deadline.Token)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            // A download stopped part way leaves a file that is not an installer. It
+            // would fail the hash check below anyway, but only on the next attempt —
+            // until then it sits in the temp directory looking like a finished download.
+            TryDelete(destination);
+            throw;
+        }
 
         if (!UpdateHubClient.VerifySha256(destination, update.Sha256))
         {
@@ -161,6 +182,34 @@ public sealed class UpdateHubUpdateService : IUpdateService
 
         return destination;
     }
+
+    /// <summary>
+    /// What a reply from the update server is allowed to be. Two sizes, because the two
+    /// calls differ by three orders of magnitude: the check returns a small JSON object,
+    /// and the download returns an installer — the Windows one is around 110 MB, so the
+    /// limit is generous enough to leave room for it to grow and still refuse a reply
+    /// that has no intention of ending.
+    /// </summary>
+    private const long CheckLimit = 1L * 1024 * 1024;
+    private const long DownloadLimit = 1024L * 1024 * 1024;
+
+    private static readonly TimeSpan CheckStallTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DownloadStallTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan DownloadDeadline = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// The SDK takes an externally supplied <see cref="HttpClient"/>, which is how these
+    /// limits reach it without editing a vendored file (see UpdateHubSdk/README.md).
+    /// </summary>
+    private static HttpClient BoundedClient(long maxBytes, TimeSpan stallTimeout) =>
+        new(new BoundedHttpHandler(maxBytes, stallTimeout))
+        {
+            // Covers connecting and the headers, which BoundedHttpHandler cannot see —
+            // it only gets to wrap a body that has started arriving. For the download
+            // the clock stops there, because the SDK reads headers first and streams
+            // the rest; that part is the handler's.
+            Timeout = stallTimeout
+        };
 
     private static string InstallerExtension =>
         OperatingSystem.IsWindows() ? ".msi" :
