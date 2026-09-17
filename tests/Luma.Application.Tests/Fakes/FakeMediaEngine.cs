@@ -27,7 +27,17 @@ public sealed class FakeMediaEngine : IMediaEngine
 
     public void Play() => PlayCount++;
     public void Pause() => PauseCount++;
-    public void Stop() => StopCount++;
+    /// <summary>
+    /// Runs inside <see cref="Stop"/>, so a test can hold the player inside a blocking
+    /// engine call the way libvlc 3's synchronous stop does.
+    /// </summary>
+    public Action? WhileStopping { get; set; }
+
+    public void Stop()
+    {
+        StopCount++;
+        WhileStopping?.Invoke();
+    }
     public void SeekTo(TimeSpan position) => LastSeek = position;
     public void SetVolume(Volume volume) => LastVolume = volume;
     public void SetRate(PlaybackRate rate) => LastRate = rate;

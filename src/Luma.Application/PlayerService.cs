@@ -472,14 +472,41 @@ public sealed class PlayerService : IPlayer, IAsyncDisposable
         Publish(snapshot);
     }
 
+    /// <summary>
+    /// A position tick. The one engine callback that still arrives on LibVLC's own
+    /// thread, and therefore the one that must never wait for the gate.
+    ///
+    /// Commands hold the gate while they call into the engine, and some of those calls
+    /// block: libvlc 3's stop waits for playback to come to a halt on the very thread
+    /// that delivers these ticks. A tick that blocked on the gate would close the
+    /// circle — the command waiting for libvlc, libvlc waiting for its thread, that
+    /// thread waiting for the command's lock — and the application would hang with no
+    /// error and nothing in a log to say why.
+    ///
+    /// Dropping the tick instead costs nothing that anyone can see. Another arrives a
+    /// quarter of a second later carrying a newer position, and the only thing the
+    /// skipped one would have moved is a slider that is about to be moved anyway.
+    ///
+    /// The other three callbacks are already re-raised on the thread pool by the
+    /// engine, so nothing else libvlc owns ever reaches this lock.
+    /// </summary>
     private void OnEnginePositionChanged(object? sender, TimeSpan position)
     {
         PlayerSnapshot snapshot;
-        lock (_gate)
+
+        if (!_gate.TryEnter())
+            return;
+
+        try
         {
             _session.ReportPosition(position);
             snapshot = BuildSnapshot();
         }
+        finally
+        {
+            _gate.Exit();
+        }
+
         Publish(snapshot);
     }
 
