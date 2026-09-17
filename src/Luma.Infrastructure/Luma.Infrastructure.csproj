@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <!-- BoundedHttpHandler is an implementation detail with rules worth testing. -->
+    <InternalsVisibleTo Include="Luma.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Luma.Application\Luma.Application.csproj" />
     <ProjectReference Include="..\Luma.Domain\Luma.Domain.csproj" />
   </ItemGroup>
